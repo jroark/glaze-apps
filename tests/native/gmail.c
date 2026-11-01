@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <wolfssl/wolfcrypt/settings.h>
 #include <wolfssl/ssl.h>
-#include "../packages/gmail/mail.h"
+#include "../../packages/gmail/mail.h"
 
 /* ---- wolfSSL hooks for --live ------------------------------------------- */
 
@@ -998,9 +998,9 @@ static int live_mode(int argc, char **argv)
 
 #define main gmail_app_main
 #define acct gmail_acct
-#include "../packages/gmail/main.c"
+#include "../../packages/gmail/main.c"
 #undef main
-#include "../host/hostres.h"
+#include "../../host/hostres.h"
 
 struct ui_app ui;
 static uint16_t ui_pixels[UI_W * UI_H];
