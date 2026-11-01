@@ -1,6 +1,6 @@
 /* Production UI, persistence and input handling against a fake audio peer. */
 #define main somafm_app_main
-#include "../packages/somafm/main.c"
+#include "../../packages/somafm/main.c"
 #undef main
 #include "hostres.h"
 #include <assert.h>
