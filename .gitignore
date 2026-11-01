@@ -1,0 +1,9 @@
+out/
+packages/*/build/
+.DS_Store
+__pycache__/
+
+# One-time Codex login exports contain credentials.
+[Cc][Oo][Dd][Ee][Xx].[Aa][Uu][Tt][Hh]
+# Doom game data stays external.
+*.[wW][aA][dD]

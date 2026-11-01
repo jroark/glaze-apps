@@ -76,14 +76,14 @@ sound and show a dismissible message. Close and relaunch to retry.
 
 ## Validation
 
-`make -C host doom-test` uses ASan/UBSan on the port's production buffered I/O,
+`make -C tests doom-test` uses ASan/UBSan on the port's production buffered I/O,
 short transfers and write failures, synthetic WAD-directory validation, and
 physical/menu key mappings. It needs no game data.
 
 To test the **real engine** with an external IWAD:
 
 ```
-make -C host doom-test DOOM_WAD=/absolute/path/doom1.wad
+make -C tests doom-test DOOM_WAD=/absolute/path/doom1.wad
 ```
 
 That optional harness targets the Doom shareware E1M1 and checks rendered frames,
@@ -95,7 +95,7 @@ remain active except historical signed-overflow and shift arithmetic.
 `doom1.wad`, starts E1M1 with the real button event path, saves/loads, and returns
 from Home. `tests/ui/t_doom_reload.txt` reboots that saved filesystem, reinstalls
 the package while keeping data, loads directly from the title screen, and quits
-using physical OK. Boot a copy of the NAND. See `CLAUDE.md` for scripted emulator runs.
+using physical OK. Run them with glaze-os's `tests/run.sh` (see README.md), which boots a copy of the NAND.
 Physical BE-300 performance still requires testing on a device.
 
 Engine provenance and local patches: `third_party/doomgeneric/UPSTREAM.md`.

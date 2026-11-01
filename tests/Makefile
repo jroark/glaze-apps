@@ -1,0 +1,87 @@
+# Native tests of the apps, run from this directory (app paths are ../-relative).
+# Host cc with ASan/UBSan. The apps' tests also compile glaze-os sources (libgfx,
+# libui, Browser's transport, test stubs) from a sibling checkout, GLAZE.
+CC ?= cc
+GLAZE ?= ../../glaze-os
+G := $(GLAZE)
+O := ../out/host
+$(shell mkdir -p $(O))
+# glaze-os's host resource loader (res_map) reads its generated assets.
+export GLAZE_ASSETS := $(abspath $(G)/assets/gen)
+
+CFLAGS := -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -I$(G)/lib/include -I$(G)/host
+GFX := $(G)/lib/gfx/gfx.c $(G)/lib/gfx/blit.c $(G)/lib/gfx/text.c $(G)/lib/gfx/res.c
+EDIT := $(G)/lib/ui/edit.c $(G)/host/clipboard_stub.c
+KEYBOARD := $(G)/lib/ui/keyboard.c $(G)/lib/ui/handwriting.c $(G)/lib/ui/recognize.c $(EDIT)
+WEB_CFLAGS := $(CFLAGS) -I$(G)/third_party/stb -I$(G)/third_party/wolfssl -I$(G)/apps/browser/tls \
+    -DWOLFSSL_USER_SETTINGS -I$(G)/third_party/jerryscript -I$(G)/apps/browser/js_platform -I$(G)/out/include \
+    -include $(G)/apps/browser/js_config.h -fsanitize=address,undefined
+# glaze-os builds the native wolfSSL its own host tests use.
+WOLFSSL_LIB := $(G)/out/host/libwolfssl.a
+$(WOLFSSL_LIB): FORCE
+	$(MAKE) -C $(G)/host ../out/host/libwolfssl.a
+
+.DEFAULT_GOAL := check
+# doom-test also runs the full engine when DOOM_WAD=/absolute/path/doom1.wad.
+check: aim-test gmail-test chatgpt-test somafm-ui-test tetris-test doom-test
+.PHONY: check FORCE
+FORCE:
+
+aim-test: ../tests/native/aim.c ../packages/aim/oscar.c ../packages/aim/md5.c ../packages/aim/text.c ../packages/aim/oscar.h
+	$(CC) $(CFLAGS) -fsanitize=address,undefined -o $(O)/aim-test ../tests/native/aim.c \
+	    ../packages/aim/oscar.c ../packages/aim/md5.c ../packages/aim/text.c
+	$(O)/aim-test
+.PHONY: aim-test
+
+gmail-test: ../tests/native/gmail.c ../packages/gmail/main.c ../packages/gmail/mime.c ../packages/gmail/imap.c ../packages/gmail/smtp.c ../packages/gmail/mail.h ../packages/gmail/gmail.h $(WOLFSSL_LIB)
+	$(CC) $(WEB_CFLAGS) -include $(G)/tests/native/settings_sys.h -o $(O)/gmail-test ../tests/native/gmail.c \
+	    ../packages/gmail/mime.c ../packages/gmail/imap.c ../packages/gmail/smtp.c \
+	    $(G)/host/hostres.c $(GFX) $(G)/lib/ui/widgets.c $(G)/lib/ui/list.c $(KEYBOARD) \
+	    $(G)/lib/ui/text.c $(G)/lib/ui/input.c $(G)/lib/ui/transition.c $(G)/lib/libc/tz.c $(WOLFSSL_LIB)
+	$(O)/gmail-test
+.PHONY: gmail-test
+
+# Chat's protocol engine, then its HTTP/TLS client against local fixtures.
+CHAT := ../packages/chatgpt
+HTTP := $(CHAT)/http
+$(O)/chatgpt-protocol: ../tests/native/chatgpt.c $(CHAT)/protocol.c $(HTTP)/url.c $(CHAT)/json.c $(CHAT)/tokens.c $(wildcard $(CHAT)/*.h)
+	$(CC) $(CFLAGS) -I$(CHAT) -I$(HTTP) -fsanitize=address,undefined $(filter %.c,$^) -o $@
+$(O)/chatgpt-client: host/chatgpt.c $(CHAT)/protocol.c $(HTTP)/url.c $(addprefix $(CHAT)/,json.c tokens.c oauth.c responses.c http_io.c) \
+    $(HTTP)/http.c $(HTTP)/conn.c $(HTTP)/tls.c $(HTTP)/inflate.c $(WOLFSSL_LIB) $(wildcard $(CHAT)/*.h)
+	$(CC) $(CFLAGS) -I$(CHAT) -I$(HTTP) -I$(G)/third_party/wolfssl -I$(G)/apps/browser/tls -DWOLFSSL_USER_SETTINGS \
+	    -fsanitize=address,undefined $(filter %.c,$^) $(WOLFSSL_LIB) -o $@
+chatgpt-test: $(O)/chatgpt-protocol $(O)/chatgpt-client
+	$(O)/chatgpt-protocol
+	python3 chatgpt_oauth.py --client $(O)/chatgpt-client
+.PHONY: chatgpt-test
+
+somafm-ui-test: ../tests/native/somafm_ui.c ../tests/native/somafm_sys.h ../packages/somafm/main.c ../packages/somafm/stations.h
+	$(CC) $(CFLAGS) -fsanitize=address,undefined -include ../tests/native/somafm_sys.h \
+	    -o $(O)/somafm-ui-test ../tests/native/somafm_ui.c $(G)/host/hostres.c $(GFX) \
+	    $(G)/lib/ui/widgets.c $(G)/lib/ui/list.c $(G)/lib/ui/text.c $(EDIT)
+	$(O)/somafm-ui-test
+.PHONY: somafm-ui-test
+
+# Portable falling-block rules and versioned save-state validation.
+tetris-test: ../tests/native/tetris.c ../packages/tetris/game.c ../packages/tetris/game.h
+	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/tetris-test
+	UBSAN_OPTIONS=halt_on_error=1 $(O)/tetris-test
+.PHONY: tetris-test
+
+# Doom's real engine and Glaze I/O/audio/video glue; no WAD in the repository.
+DOOM_VENDOR := $(wildcard ../third_party/doomgeneric/*.c)
+DOOM_GLUE := $(addprefix ../packages/doom/,files.c input.c keys.c sound.c system.c video.c wad.c)
+DOOM_NATIVE_FLAGS := $(CFLAGS) -I../third_party/doomgeneric -fno-strict-aliasing -fwrapv -Wno-unused-function -Wno-unused-variable -Wno-sign-compare -Wno-type-limits -Wno-missing-field-initializers -Wno-implicit-fallthrough -Wno-unused-but-set-parameter -Wno-enum-conversion -Wno-format-truncation -Wno-pointer-to-int-cast -Wno-absolute-value -fsanitize=address,undefined -fno-sanitize=shift,signed-integer-overflow
+DOOM_NATIVE_OBJS := $(patsubst ../%.c,$(O)/doom/%.o,$(DOOM_VENDOR) $(DOOM_GLUE))
+$(O)/doom/%.o: ../%.c $(wildcard ../packages/doom/*.h ../third_party/doomgeneric/*.h)
+	@mkdir -p $(dir $@)
+	$(CC) $(DOOM_NATIVE_FLAGS) -include ../packages/doom/compat.h -c $< -o $@
+$(O)/doom/host.o: host/doom.c
+	@mkdir -p $(dir $@)
+	$(CC) $(DOOM_NATIVE_FLAGS) -c $< -o $@
+$(O)/doom-test: $(DOOM_NATIVE_OBJS) $(O)/doom/host.o
+	$(CC) $(DOOM_NATIVE_FLAGS) $^ -o $@
+doom-test: $(O)/doom-test
+	$(O)/doom-test
+	$(if $(DOOM_WAD),ASAN_OPTIONS=detect_leaks=0 $(O)/doom-test "$(DOOM_WAD)",@echo "Optional full engine test: make doom-test DOOM_WAD=/absolute/path/doom1.wad")
+.PHONY: doom-test

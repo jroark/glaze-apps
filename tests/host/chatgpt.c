@@ -1,9 +1,9 @@
 /* Native exercise of the production JSON/HTTP/TLS path, without a GUI. */
-#include "../packages/chatgpt/chat.h"
-#include "../packages/chatgpt/codex.h"
-#include "../apps/browser/net.h"
-#include "../apps/browser/plat.h"
-#include "../apps/browser/web.h"
+#include "../../packages/chatgpt/chat.h"
+#include "../../packages/chatgpt/codex.h"
+#include "net.h"
+#include "plat.h"
+#include "web.h"
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>

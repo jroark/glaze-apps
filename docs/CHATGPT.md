@@ -18,7 +18,7 @@ does not expose shell, file-editing, browsing or other model tools.
 # Or use the installed cross compiler:
 make -j4 out/pkg/chatgpt.gzp
 
-tools/mkcfimg.sh out/chat-cf.img 16 16 out/pkg/chatgpt.gzp
+../glaze-os/tools/mkcfimg.sh out/chat-cf.img 16 16 out/pkg/chatgpt.gzp
 ```
 
 Boot Glaze with the card, open **Files → Card → chatgpt.gzp**, install on
@@ -31,8 +31,8 @@ and date.
 With the USB development client and an unlocked device:
 
 ```sh
-out/host/glaze-usb put out/pkg/chatgpt.gzp /Documents/chatgpt.gzp
-out/host/glaze-usb run /Documents/chatgpt.gzp
+../glaze-os/out/host/glaze-usb put out/pkg/chatgpt.gzp /Documents/chatgpt.gzp
+../glaze-os/out/host/glaze-usb run /Documents/chatgpt.gzp
 ```
 
 ## Device-code login directly on Glaze
@@ -80,7 +80,7 @@ Transfer the file into Glaze's Documents folder, Downloads folder, or the
 root of a CF card. Then open **Account → Import Codex login**:
 
 ```sh
-out/host/glaze-usb put /tmp/CODEX.AUTH /Documents/CODEX.AUTH
+../glaze-os/out/host/glaze-usb put /tmp/CODEX.AUTH /Documents/CODEX.AUTH
 ```
 
 The export is created with mode 0600 and never printed. It contains bearer
@@ -166,7 +166,7 @@ OpenAI application registration or endorsement.
 ## Validation
 
 ```sh
-make -C host chatgpt-test
+make -C tests chatgpt-test
 python3 -m py_compile tools/chatgpt_signin.py tests/chatgpt_oauth.py
 ```
 

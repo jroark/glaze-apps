@@ -1,7 +1,7 @@
 /* Native checks of the actual port I/O, WAD validation and engine. */
 #define DOOM_COMPAT_IMPLEMENTATION
-#include "../packages/doom/compat.h"
-#include "../packages/doom/port.h"
+#include "../../packages/doom/compat.h"
+#include "../../packages/doom/port.h"
 #include "doomgeneric.h"
 #include "doomstat.h"
 #include "doomkeys.h"

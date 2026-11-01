@@ -6,7 +6,7 @@ Glaze's audio service. Start the emulator with `--audio` to hear playback.
 An older OS can load the package and explains that an OS update is needed.
 
 Build with `./build.sh`. Install `out/pkg/somafm.gzp` through Files or include
-it on a CompactFlash image with `tools/mkcfimg.sh`. The App Store catalog
+it on a CompactFlash image with `../glaze-os/tools/mkcfimg.sh`. The App Store catalog
 includes the app; normal store build/publishing procedures apply. Nothing is
 published by building this package.
 
@@ -71,21 +71,24 @@ The original icon is reproducible with `python3 tools/mksomafm_icon.py`.
 ## Verification
 
 ```sh
-make -C host radio-test
-make -C host radio-worker-test
-make -C host somafm-ui-test
-make -C host store-http-test
-./build.sh INPUT_SCRIPT=tests/ui/t_somafm.txt
+make -C ../glaze-os/host radio-test
+make -C ../glaze-os/host radio-worker-test
+make -C tests somafm-ui-test
+make -C ../glaze-os/host store-http-test
+./build.sh                                   # out/pkg/somafm.gzp
+mkdir -p ../glaze-os/out/input && cp tests/ui/t_somafm*.txt ../glaze-os/out/input/
+(cd ../glaze-os && ./build.sh INPUT_SCRIPT=out/input/t_somafm.txt)
 python3 tests/run_somafm.py --seconds 50 --expect-playing
 ```
 
-Native tests exercise fragmented HTTP/ICY and MP3 input, malformed responses,
+The radio and store tests belong to glaze-os, whose audio server streams the
+stations; `somafm-ui-test` is this repository's. Native tests exercise fragmented HTTP/ICY and MP3 input, malformed responses,
 redirects, alternate servers, full-buffer backpressure, cancellation, TLS
 rejection, favorites persistence, input handling, and older-service UI.
-They write UI previews under `out/host/somafm-*.bmp`.
+They write UI previews under each repository's `out/host/somafm-*.bmp`.
 
-To exercise package installation through Files, build with
-`INPUT_SCRIPT=tests/ui/t_somafm_install.txt` and run
+To exercise package installation through Files, build glaze-os with
+`INPUT_SCRIPT=out/input/t_somafm_install.txt` and run
 `python3 tests/run_somafm.py --seconds 50 --install-from-files --expect-playing`.
 This starts without SomaFM installed, opens its package in Documents, installs
 it on flash, launches it, and verifies live playback after Home and return.
@@ -94,14 +97,14 @@ Real audio-service handoff checks run without SpringBoard as an optional
 guest fixture, using live SomaFM by default:
 
 ```sh
-./build.sh RADIO_TESTS=1 INIT=bin/radio_guest
+(cd ../glaze-os && ./build.sh RADIO_TESTS=1 INIT=bin/radio_guest)
 python3 tests/run_somafm.py --seconds 60 --guest
 # Restore a normal OS build afterwards:
-./build.sh
+(cd ../glaze-os && ./build.sh)
 ```
 
-For the background soak test, build with
-`INPUT_SCRIPT=tests/ui/t_somafm_soak.txt`, then run
+For the background soak test, build glaze-os with
+`INPUT_SCRIPT=out/input/t_somafm_soak.txt`, then run
 `python3 tests/run_somafm.py --seconds 660 --expect-playing`. The script opens
 Calculator while SomaFM plays, then returns to SomaFM after ten minutes.
 `BE300` can override the emulator executable. Logs, screenshots, and disposable

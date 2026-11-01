@@ -1,6 +1,6 @@
 # Card contains only tetris.gzp. Touch only installs/launches through Glaze.
 # Gameplay and menus use built-in hardware keys exclusively.
-# CF=out/tetris-cf.img tests/run.sh tests/ui/t_tetris.txt 46
+# CF=out/tetris-cf.img ../glaze-os/tests/run.sh tests/ui/t_tetris.txt 46
 3000 drag 40 280 235 280 500
 4500 tap 30 120
 6500 tap 120 64

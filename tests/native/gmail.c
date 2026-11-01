@@ -1000,7 +1000,7 @@ static int live_mode(int argc, char **argv)
 #define acct gmail_acct
 #include "../../packages/gmail/main.c"
 #undef main
-#include "../../host/hostres.h"
+#include "hostres.h"
 
 struct ui_app ui;
 static uint16_t ui_pixels[UI_W * UI_H];

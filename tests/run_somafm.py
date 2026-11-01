@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Boot a disposable image with the real SomaFM package preinstalled.
 
-Build first: ./build.sh INPUT_SCRIPT=tests/ui/t_somafm.txt
+Build the package here (./build.sh), and the OS image with the input script
+in the sibling glaze-os checkout (GLAZE_DIR, default ../glaze-os), for example:
+  mkdir -p ../glaze-os/out/input && cp tests/ui/t_somafm.txt ../glaze-os/out/input/
+  (cd ../glaze-os && ./build.sh INPUT_SCRIPT=out/input/t_somafm.txt)
 Then: python3 tests/run_somafm.py --seconds 660
 Use --no-net for the Ethernet error screen. Artifacts stay under out/.
 """
@@ -17,8 +20,9 @@ import tempfile
 
 
 def prepare(root, preinstall=True, install_from_files=False):
+    glaze = Path(os.environ.get('GLAZE_DIR', root.parent / 'glaze-os')).resolve()
     work = Path(tempfile.mkdtemp(prefix='somafm-', dir=root/'out'))
-    shutil.copytree(root/'userdata', work/'userdata')
+    shutil.copytree(glaze/'userdata', work/'userdata')
     if install_from_files:
         shutil.copyfile(root/'out/pkg/somafm.gzp', work/'userdata/Documents/SomaFM.gzp')
     archive = (root/'out/pkg/somafm.gzp').read_bytes()
@@ -30,10 +34,10 @@ def prepare(root, preinstall=True, install_from_files=False):
         assert target.resolve().is_relative_to(bundle.resolve())
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(archive[off:off+size])
-    subprocess.run(['make', 'OUT=out/native', 'out/native/buildtools/mkfsimg'], cwd=root, check=True, capture_output=True)
-    blocks = re.search(r'#define GZ_FLASH_BLOCKS\s+(\d+)', (root/'lib/include/glaze/abi.h').read_text()).group(1)
-    subprocess.run([str(root/'out/native/buildtools/mkfsimg'), str(work/'userdata'), blocks, str(work/'fs.img')], check=True)
-    nand = bytearray((root/'out/glaze.bin').read_bytes())
+    subprocess.run(['make', 'OUT=out/native', 'out/native/buildtools/mkfsimg'], cwd=glaze, check=True, capture_output=True)
+    blocks = re.search(r'#define GZ_FLASH_BLOCKS\s+(\d+)', (glaze/'lib/include/glaze/abi.h').read_text()).group(1)
+    subprocess.run([str(glaze/'out/native/buildtools/mkfsimg'), str(work/'userdata'), blocks, str(work/'fs.img')], check=True)
+    nand = bytearray((glaze/'out/glaze.bin').read_bytes())
     fs = (work/'fs.img').read_bytes()
     assert len(fs) == len(nand)-0x500000
     nand[0x500000:] = fs

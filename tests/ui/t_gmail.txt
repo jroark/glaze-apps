@@ -2,7 +2,7 @@
 # Boot the file system tests/ui/t_gmail_install.txt installed Gmail into, with the
 # network card, against the local mock IMAP/SMTP server:
 #   out/host/gmail-test --serve 11143 11587 &
-#   FS_FROM=out/shots/t_gmail_install/glaze.bin NET=1 tests/run.sh tests/ui/t_gmail.txt 56
+#   FS_FROM=../glaze-os/out/shots/t_gmail_install/glaze.bin NET=1 ../glaze-os/tests/run.sh tests/ui/t_gmail.txt 56
 # Replace 192.168.68.53 below with this host's own address.
 3000 drag 40 280 235 280 500
 4500 tap 90 192
