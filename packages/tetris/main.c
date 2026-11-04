@@ -34,7 +34,7 @@ static void draw(void)
 {
     gfx_surface *s=&ui.surf;
     gfx_fill(s,gfx_r(0,0,UI_W,UI_H),0x101B2B);
-    ui_draw_navbar(s,"Tetris",NULL,NULL,0);
+    ui_draw_navbar(s,"Blocks",NULL,NULL,0);
     gfx_fill(s,gfx_r(13,41,104,202),0x40536D);
     gfx_fill(s,gfx_r(15,42,100,200),0x182539);
     for(int y=2;y<TH;y++)for(int x=0;x<TW;x++){
