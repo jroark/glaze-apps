@@ -1,6 +1,6 @@
 # Flappy
 
-Installable Glaze Flappy Bird clone. Build with `./build.sh out/pkg/flappy.gzp`;
+Installable Glaze side-scrolling flying game. Build with `./build.sh out/pkg/flappy.gzp`;
 install the package from Files on a card. No extra resources are needed.
 
 Use the BE-300 hardware buttons: OK or Up flaps, Escape opens a menu: Up/Down

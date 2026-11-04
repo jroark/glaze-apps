@@ -1,4 +1,4 @@
-# Tetris
+# Blocks
 
 Installable Glaze falling-block game. Build with `./build.sh out/pkg/tetris.gzp`;
 install the package from Files on a card. No extra resources are needed.
