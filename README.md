@@ -11,7 +11,7 @@ App Store or installed from a CompactFlash card through Files.
 | `chatgpt` | Chat: Codex with ChatGPT account sign-in ([guide](docs/CHATGPT.md)) |
 | `somafm` | SomaFM internet radio ([guide](docs/SOMAFM.md)) |
 | `doom` | DoomGeneric port; bring your own WAD ([guide](docs/DOOM.md)) |
-| `minesweeper`, `solitaire`, `tetris`, `fifteen` | Games |
+| `minesweeper`, `solitaire`, `tetris`, `snake`, `fifteen` | Games |
 | `sketch` | Drawing |
 
 ## Building
