@@ -1,0 +1,4 @@
+id=snake
+name=Snake
+version=1.0
+exec=app

@@ -1,0 +1,26 @@
+# Card contains only snake.gzp. Touch only installs/launches through Glaze.
+# Gameplay and menus use built-in hardware keys exclusively.
+# CF=out/snake-cf.img ../glaze-os/tests/run.sh tests/ui/t_snake.txt 40
+3000 drag 40 280 235 280 500
+4500 tap 30 120
+6500 tap 120 64
+8500 tap 120 64
+10500 tap 120 242
+15000 tap 120 203
+16000 key home
+18000 tap 90 192
+20000 key ok
+21000 key down
+22000 key left
+23000 key up
+24000 key esc
+25000 key down
+26000 key ok
+27000 key down
+28000 key ok
+29500 key esc
+30500 key home
+32500 tap 90 192
+34500 key ok
+34800 key up
+35100 key esc
