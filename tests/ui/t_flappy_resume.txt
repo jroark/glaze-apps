@@ -1,0 +1,21 @@
+# Flappy Bird stage 2: resume the game stage 1 saved, across a cold boot.
+#   FS_FROM=out/shots/t_flappy/glaze.bin CF=../glaze-apps/out/flappy-cf.img \
+#   tests/run.sh tests/ui/t_flappy_resume.txt 9
+# boots the flash image stage 1 left behind: flappy installed, and an alive
+# saved state (bird y=96 rising, pair 1 at x=111, 1066 ms of clearance
+# before its collision window).
+#
+# A fresh boot has no running process, so the icon tap spawns a new one:
+# main() reads data/state, game_decode accepts it, and the app opens its
+# Paused menu (Resume + New Game) over the restored field -- proof the save
+# survived the reboot. OK resumes; the bird rises to the tail of its
+# restored flap arc, falls back toward y~96, and ESC pauses alive at 0.90 s
+# of play, just before pair 1's shafts reach the bird's column. Final frame:
+# the Paused menu again over the restored Score 0 field.
+#
+# The icon lives where the installer put it (stage 1's launch tap, 90 192).
+
+3000 drag 40 280 235 280 500
+3900 tap 90 192                # launch: decodes the save, opens Paused mid-field
+4450 key ok                    # Resume the restored game
+5350 key esc                   # pause alive, pair 1 inbound: the frame to keep

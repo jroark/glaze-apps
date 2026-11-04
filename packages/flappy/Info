@@ -1,0 +1,4 @@
+id=flappy
+name=Flappy
+version=1.0
+exec=app

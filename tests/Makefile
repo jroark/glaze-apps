@@ -23,7 +23,7 @@ $(WOLFSSL_LIB): FORCE
 
 .DEFAULT_GOAL := check
 # doom-test also runs the full engine when DOOM_WAD=/absolute/path/doom1.wad.
-check: aim-test gmail-test chatgpt-test somafm-ui-test tetris-test snake-test doom-test
+check: aim-test gmail-test chatgpt-test somafm-ui-test tetris-test snake-test flappy-test doom-test
 .PHONY: check FORCE
 FORCE:
 
@@ -73,6 +73,12 @@ snake-test: ../tests/native/snake.c ../packages/snake/game.c ../packages/snake/g
 	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/snake-test
 	UBSAN_OPTIONS=halt_on_error=1 $(O)/snake-test
 .PHONY: snake-test
+
+# Portable flappy rules and versioned save-state validation.
+flappy-test: ../tests/native/flappy.c ../packages/flappy/game.c ../packages/flappy/game.h
+	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/flappy-test
+	UBSAN_OPTIONS=halt_on_error=1 $(O)/flappy-test
+.PHONY: flappy-test
 
 # Doom's real engine and Glaze I/O/audio/video glue; no WAD in the repository.
 DOOM_VENDOR := $(wildcard ../third_party/doomgeneric/*.c)

@@ -1,0 +1,45 @@
+# Flappy Bird stage 1: install from the CF card, then play with only the
+# BE-300 hardware buttons, and leave an alive saved game behind.
+# CF holds only flappy.gzp: build the card with ../glaze-os host/mkcf_recovery.
+#   CF=../glaze-apps/out/flappy-cf.img tests/run.sh tests/ui/t_flappy.txt 24
+#
+# Script t is guest uptime ms (beats deliver at t+~5 ms). Install taps match
+# t_snake.txt, which passes end-to-end on this same full build + card flow.
+# The app saves at spawn and decodes that save on ACTIVATE, so a launch opens
+# the Paused menu with the bird at spawn position (y=112). game.c steps only
+# while playing: pausing freezes the pipe clock. Pair 1 (spawns at x=240)
+# overlaps the bird's column during play time 3.22..3.85 s, and gap tops come
+# from a wall-clock seed the test cannot know -- so every play segment
+# ESC-pauses long before that window, and the saved state keeps >= 1 s of
+# margin for stage 2 (tests/ui/t_flappy_resume.txt) to resume into.
+#
+# Play timings verified against game.c integer physics in a host sim:
+#   resume 18600, flap 19050 (y 112->171, then up to 98), pause 19650.
+#   resume 20150 (coasts to 184, 33 px above the floor by 20600), flap,
+#   flap 21200, pause 21250: saved y=96, pair 1 at x=111, 1066 ms margin.
+
+# 1) unlock, then install from the CF card: Files, CF card, package, Install
+3000 drag 40 280 235 280 500
+4500 tap 30 120
+6500 tap 120 64
+8500 tap 120 64
+10500 tap 120 242
+15000 tap 120 203
+
+# 2) launch from the springboard: spawns ~18100 into the Paused menu
+16000 key home
+18000 tap 90 192
+
+# 3) two play segments, each paused alive before the pair 1 window
+18600 key ok      # Resume
+19050 key ok      # flap
+19650 key esc     # pause alive
+20150 key ok      # Resume (the menu selection resets to Resume)
+20600 key ok      # flap before the floor
+21200 key ok      # flap
+21250 key esc     # pause alive: y 96, pair 1 at x=111, 1066 ms of margin
+
+# 4) HOME saves and suspends; an icon tap re-activates the live process,
+#    whose paused game view is the final frame: alive bird, pair inbound.
+21850 key home
+22000 tap 90 192
