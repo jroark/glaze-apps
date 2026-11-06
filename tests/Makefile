@@ -23,7 +23,7 @@ $(WOLFSSL_LIB): FORCE
 
 .DEFAULT_GOAL := check
 # doom-test also runs the full engine when DOOM_WAD=/absolute/path/doom1.wad.
-check: aim-test gmail-test chatgpt-test somafm-ui-test tetris-test snake-test flappy-test doom-test
+check: aim-test gmail-test chatgpt-test somafm-ui-test tetris-test snake-test flappy-test chess-test doom-test
 .PHONY: check FORCE
 FORCE:
 
@@ -79,6 +79,22 @@ flappy-test: ../tests/native/flappy.c ../packages/flappy/game.c ../packages/flap
 	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/flappy-test
 	UBSAN_OPTIONS=halt_on_error=1 $(O)/flappy-test
 .PHONY: flappy-test
+
+# Chess rules model, then the micro-Max engine and its glue exercising it.
+# The vendored engine object keeps upstream's terse idioms, so it builds with
+# the warning waivers its style needs; the model and tests use stock flags.
+CHESS_UBSAN := -fsanitize=address,undefined -fno-sanitize=shift,signed-integer-overflow \
+    -fno-sanitize-recover=all
+$(O)/chess/umax4_8.o: ../third_party/micromax/umax4_8.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -fwrapv -Wno-char-subscripts -Wno-parentheses -Wno-comment \
+	    $(CHESS_UBSAN) -c $< -o $@
+$(O)/chess-test: ../tests/native/chess.c ../packages/chess/game.c \
+    ../packages/chess/game.h ../packages/chess/engine.h $(O)/chess/umax4_8.o
+	$(CC) $(CFLAGS) $(CHESS_UBSAN) $(filter %.c,$^) $(O)/chess/umax4_8.o -o $@
+chess-test: $(O)/chess-test
+	UBSAN_OPTIONS=halt_on_error=1 $(O)/chess-test
+.PHONY: chess-test
 
 # Doom's real engine and Glaze I/O/audio/video glue; no WAD in the repository.
 DOOM_VENDOR := $(wildcard ../third_party/doomgeneric/*.c)

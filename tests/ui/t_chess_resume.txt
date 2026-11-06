@@ -1,0 +1,23 @@
+# Chess stage 2: resume the game stage 1 saved, across a cold boot.
+#   FS_FROM=out/shots/t_chess/glaze.bin CF=out/chess-cf.img \
+#   ../glaze-os/tests/run.sh tests/ui/t_chess_resume.txt 20
+# boots the flash image stage 1 left behind: chess installed, and an
+# in-progress saved state (1. e4, 2. g4 and Black's replies, Normal
+# strength) replayed as a checksummed move-history record.
+#
+# A fresh boot has no running process, so the icon tap spawns a new one:
+# main() reads data/state, c_restore revalidates the checksum and replays
+# the history onto a fresh model board, engine_sync replays it onto a fresh
+# engine board, and the app opens its Paused menu over the restored mid-game
+# position -- proof the save survived the reboot. OK resumes; the cursor is
+# back on e2 (now empty), so the a2 pawn is selected by touch instead:
+# a2-a3 stays legal whatever Black played, because no black piece reaches a3
+# in its first two moves. Black answers; ESC then pauses over the kept
+# frame: the Paused menu again over a board three human moves deep.
+
+3000 drag 40 280 235 280 500
+3900 tap 90 192                # launch: decodes the save, opens Paused mid-game
+4600 key ok                    # Resume the restored position
+5400 tap 36 226                # select the a2 pawn by touch (cursor moved on)
+5900 tap 36 202                # a2-a3; Black answers
+7500 key esc                   # pause over the in-progress board: the frame to keep
