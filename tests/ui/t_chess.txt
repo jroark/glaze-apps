@@ -1,0 +1,50 @@
+# Chess stage 1: install from the CF card, play two moves (hardware keys and
+# touch), and leave an in-progress saved game behind.
+# CF holds only chess.gzp: build the card with ../glaze-os/tools/mkcfimg.sh.
+#   CF=out/chess-cf.img ../glaze-os/tests/run.sh tests/ui/t_chess.txt 40
+#
+# Install taps match t_snake.txt / t_flappy.txt, which pass end-to-end. The
+# human always plays White; every OK/tap move is answered synchronously by
+# the vendored micro-Max engine (Weak = 3000-node budget by default, Normal
+# = 40000 after the menu cycles it). The engine's exact replies are never
+# scripted: each chosen human move stays legal under any reply the engine
+# could have made (no black piece reaches g3, g4 or a3 in its first moves).
+# The app saves a fresh-game record at spawn, so a launch always has a
+# decode path to prove; stage 2 is tests/ui/t_chess_resume.txt.
+
+# 1) unlock, then install from the CF card: Files, CF card, package, Install
+3000 drag 40 280 235 280 500
+4500 tap 30 120
+6500 tap 120 64
+8500 tap 120 64
+10500 tap 120 242
+15000 tap 120 203
+
+# 2) launch from the springboard: no save yet, so a fresh board opens with
+#    White to move and the cursor parked on e2
+16000 key home
+18000 tap 90 192
+
+# 3) 1. e4 by cursor + OK: select e2, step up two ranks, play there
+20000 key ok
+20500 key up
+21000 key up
+21500 key ok      # plays e2-e4; Black (Weak) answers
+
+# 4) ESC pauses and saves; tap the Strength row (app y 200..226, screen
+#    y 216..242 below the 16 px status bar) to cycle the engine Weak ->
+#    Normal, then tap the Resume row (app y 110..136, screen 126..152)
+24000 key esc
+24500 tap 120 229
+25000 tap 120 139
+
+# 5) 2. g4 by touch: tap the g2 pawn (180,226), then the g4 square
+#    (180,178); screen y = app y + 16 for the status bar. Black answers;
+#    then pause, suspend, and re-tap the icon so
+#    the live process's Paused menu over the in-progress board is the frame
+#    the run keeps.
+27000 tap 180 226
+27500 tap 180 178
+30000 key esc
+31000 key home
+31500 tap 90 192
