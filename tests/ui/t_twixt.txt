@@ -1,0 +1,50 @@
+# TwixT stage 1: install from the CF card, play two pegs (touch), pause,
+# cycle Strength Normal -> Strong, play another peg, and leave an
+# in-progress saved game behind.
+# CF holds only twixt.gzp: build the card with ../glaze-os/tools/mkcfimg.sh.
+#   CF=out/twixt-cf.img ../glaze-os/tests/run.sh tests/ui/t_twixt.txt 32
+#
+# Install taps match t_chess.txt / t_snake.txt, which pass end-to-end. The
+# human is always Red and plays first; every tap answers are pinned by a
+# host replay of game.c from this tree: Red (1,1) draws Black (10,4) at
+# Normal; after the menu cycles strength, Red (4,3) draws Black (8,5) at
+# Strong, which links (8,5) to (10,4). The app also saves at spawn, so a
+# launch always has a decode path to prove; stage 2 is
+# tests/ui/t_twixt_resume.txt.
+
+# 1) unlock, then install from the CF card: Files, the Card row (root row 1,
+#    not row 0, which is the flash's Applications folder), twixt.gzp (card
+#    row 0), Install on Flash, OK.
+3000 drag 40 280 235 280 500
+4500 tap 30 120
+6500 tap 120 100
+8500 tap 120 64
+10500 tap 120 242
+15000 tap 120 203
+
+# 2) launch from the springboard: the factory flash preinstalls Maps at grid
+#    cell (1,2), so TwixT lands at cell (2,2), center (150,192). No save
+#    yet, so a fresh board opens, Red to move; the 12x12 dots are app
+#    (32,64)+16*(col,row), screen y adds the 16 px status bar.
+16000 key home
+18000 tap 150 192
+
+# 3) Red peg at (col 1, row 1): tap the dot (48,96); Black answers at
+#    (col 10, row 4), out on its right wing - no link yet.
+20000 tap 48 96
+
+# 4) ESC pauses and saves; tap the Strength row (app y 212..238, screen y
+#    228..254) to cycle Normal -> Strong, then tap the Resume row (app y
+#    92..118, screen 108..134)
+23000 key esc
+23500 tap 120 241
+24000 tap 120 121
+
+# 5) Red peg at (col 4, row 3): tap the dot (96,128); Black (Strong) answers
+#    at (col 8, row 5), building the rod (8,5)-(10,4); then pause, suspend,
+#    and re-tap the icon so the live process's Paused menu over the
+#    in-progress board is the frame the run keeps.
+26000 tap 96 128
+29000 key esc
+30000 key home
+30500 tap 150 192
