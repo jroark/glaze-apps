@@ -10,3 +10,7 @@ __pycache__/
 
 # Local secrets (tile provider keys for tools/mkmaptiles.py)
 .env
+
+# Claude Code: skills are committed; local worktrees and settings are not.
+.claude/worktrees/
+.claude/settings.local.json
