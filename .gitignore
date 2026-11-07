@@ -7,3 +7,6 @@ __pycache__/
 [Cc][Oo][Dd][Ee][Xx].[Aa][Uu][Tt][Hh]
 # Doom game data stays external.
 *.[wW][aA][dD]
+
+# Local secrets (tile provider keys for tools/mkmaptiles.py)
+.env

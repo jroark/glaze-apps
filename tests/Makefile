@@ -23,7 +23,7 @@ $(WOLFSSL_LIB): FORCE
 
 .DEFAULT_GOAL := check
 # doom-test also runs the full engine when DOOM_WAD=/absolute/path/doom1.wad.
-check: aim-test gmail-test chatgpt-test somafm-ui-test tetris-test snake-test flappy-test chess-test doom-test
+check: aim-test gmail-test chatgpt-test somafm-ui-test maps-ui-test tetris-test snake-test flappy-test chess-test doom-test
 .PHONY: check FORCE
 FORCE:
 
@@ -61,6 +61,19 @@ somafm-ui-test: ../tests/native/somafm_ui.c ../tests/native/somafm_sys.h ../pack
 	    $(G)/lib/ui/widgets.c $(G)/lib/ui/list.c $(G)/lib/ui/text.c $(EDIT)
 	$(O)/somafm-ui-test
 .PHONY: somafm-ui-test
+
+# Maps against a host directory holding glaze-os's synthetic tile pack.
+MAPS := ../packages/maps
+$(O)/maps-fs/Maps/demo.gzmap: $(G)/tools/mkmaptiles.py $(G)/tests/maptiles_test.py
+	python3 $(G)/tests/maptiles_test.py --keep $(O)/maps-fs/Maps
+maps-ui-test: ../tests/native/maps_ui.c ../tests/native/maps_sys.h $(MAPS)/main.c $(MAPS)/gzmap.c $(MAPS)/gzmap.h \
+    $(MAPS)/track.c $(MAPS)/track.h $(MAPS)/puff.c $(G)/lib/gps/gps.c $(O)/maps-fs/Maps/demo.gzmap
+	$(CC) $(CFLAGS) -fsanitize=address,undefined -include ../tests/native/maps_sys.h \
+	    -o $(O)/maps-ui-test ../tests/native/maps_ui.c $(MAPS)/gzmap.c $(MAPS)/track.c $(MAPS)/puff.c \
+	    $(G)/lib/gps/gps.c $(G)/host/hostres.c $(GFX) $(G)/lib/ui/widgets.c $(G)/lib/ui/list.c $(G)/lib/ui/text.c $(EDIT)
+	rm -f $(O)/maps-fs/Maps/demo.mbtiles
+	MAPS_FS=$(abspath $(O)/maps-fs) $(O)/maps-ui-test
+.PHONY: maps-ui-test
 
 # Portable falling-block rules and versioned save-state validation.
 tetris-test: ../tests/native/tetris.c ../packages/tetris/game.c ../packages/tetris/game.h
