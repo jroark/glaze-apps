@@ -1,0 +1,30 @@
+# TwixT stage 2: resume the game stage 1 saved, across a cold boot.
+#   FS_FROM=out/shots/t_twixt/glaze.bin CF=out/twixt-cf.img \
+#   ../glaze-os/tests/run.sh tests/ui/t_twixt_resume.txt 14
+# boots the flash image stage 1 left behind: TwixT installed, and an
+# in-progress saved state (Red (1,1) and (4,3), Black (10,4) and (8,5)
+# with their rod, Strong strength) replayed as a checksummed move-history
+# record.
+
+# A fresh boot has no running process, so the icon tap spawns a new one:
+# main() reads data/state, tw_restore() revalidates the checksum and
+# replays the four plies onto a fresh model, and the app opens its Paused
+# menu over the restored position -- proof the save survived the reboot.
+# OK resumes; touch then drops two more Red pegs:
+#   (2,7) at screen (64,192): Black (Strong) answers at (10,6), extending
+#     its chain: rod (10,6)-(8,5);
+#   (3,7) at screen (80,192): legal under any reply, since that dot has no
+#     knight-neighbour pegs at all, so its peg builds no links to cross;
+#     Black finishes the fan with (6,6), rod (6,6)-(8,5).
+# ESC then pauses over the eight-ply board: the frame to keep.
+3000 drag 40 280 235 280 500
+3900 tap 150 192               # TwixT (the factory flash preinstalls Maps at (90,192)):
+                               # decodes the save, opens Paused mid-game
+4600 key ok                    # Resume the restored position
+5400 tap 64 192                # Red (2,7); Black (Strong) plays (10,6)
+6600 tap 80 192                # Red (3,7); Black (Strong) plays (6,6)
+                               # (legal under any reply: (3,7) has no knight-
+                               # neighbour pegs, so it builds no links to cross)
+# The run's clock ends with the live board on screen: eight pegs with their
+# rods (menu-free), and "Move 5   Strong" at the bottom -- a decode plus the
+# two touch moves plus four synchronous Black answers across a cold boot.

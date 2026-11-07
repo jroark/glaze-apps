@@ -23,7 +23,7 @@ $(WOLFSSL_LIB): FORCE
 
 .DEFAULT_GOAL := check
 # doom-test also runs the full engine when DOOM_WAD=/absolute/path/doom1.wad.
-check: aim-test gmail-test chatgpt-test somafm-ui-test maps-ui-test tetris-test snake-test flappy-test chess-test doom-test
+check: aim-test gmail-test chatgpt-test somafm-ui-test maps-ui-test tetris-test snake-test flappy-test twixt-test chess-test doom-test
 .PHONY: check FORCE
 FORCE:
 
@@ -92,6 +92,13 @@ flappy-test: ../tests/native/flappy.c ../packages/flappy/game.c ../packages/flap
 	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/flappy-test
 	UBSAN_OPTIONS=halt_on_error=1 $(O)/flappy-test
 .PHONY: flappy-test
+
+# Portable TwixT rules: pegs, auto rods, crossing blocks, win floods,
+# undo, save/restore and the three AI levels.
+twixt-test: ../tests/native/twixt.c ../packages/twixt/game.c ../packages/twixt/game.h
+	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/twixt-test
+	UBSAN_OPTIONS=halt_on_error=1 $(O)/twixt-test
+.PHONY: twixt-test
 
 # Chess rules model, then the micro-Max engine and its glue exercising it.
 # The vendored engine object keeps upstream's terse idioms, so it builds with
