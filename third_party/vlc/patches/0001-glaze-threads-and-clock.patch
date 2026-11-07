@@ -1,0 +1,186 @@
+--- a/vlc/include/vlc_threads.h
++++ b/vlc/include/vlc_threads.h
+@@ -56,6 +56,9 @@
+     /* This is not prototyped under Linux, though it exists. */
+     int pthread_mutexattr_setkind_np( pthread_mutexattr_t *attr, int kind );
+ 
++#elif defined( GLAZE_THREADS )                                       /* Glaze */
++#   include "glaze_threads.h"
++
+ #elif defined( HAVE_CTHREADS_H )                                  /* GNUMach */
+ #   include <cthreads.h>
+ 
+@@ -212,6 +215,18 @@
+     vlc_object_t * p_this;
+ } vlc_cond_t;
+ 
++#elif defined( GLAZE_THREADS )
++typedef struct
++{
++    struct gz_mutex mutex;
++    vlc_object_t * p_this;
++} vlc_mutex_t;
++typedef struct
++{
++    struct glaze_cond cond;
++    vlc_object_t * p_this;
++} vlc_cond_t;
++
+ #elif defined( HAVE_CTHREADS_H )
+ typedef cthread_t       vlc_thread_t;
+ 
+--- a/vlc/include/vlc_threads_funcs.h
++++ b/vlc/include/vlc_threads_funcs.h
+@@ -111,6 +111,10 @@
+     if ( i_result )
+         psz_error = strerror(i_result);
+ 
++#elif defined( GLAZE_THREADS )
++    gz_mutex_lock( &p_mutex->mutex );
++    i_result = 0;
++
+ #elif defined( HAVE_CTHREADS_H )
+     mutex_lock( p_mutex->mutex );
+     i_result = 0;
+@@ -179,6 +183,10 @@
+     i_result = pthread_mutex_unlock( &p_mutex->mutex );
+     if ( i_result )
+         psz_error = strerror(i_result);
++
++#elif defined( GLAZE_THREADS )
++    gz_mutex_unlock( &p_mutex->mutex );
++    i_result = 0;
+ 
+ #elif defined( HAVE_CTHREADS_H )
+     mutex_unlock( p_mutex );
+@@ -313,6 +321,9 @@
+     i_result = pthread_cond_signal( &p_condvar->cond );
+     if ( i_result )
+         psz_error = strerror(i_result);
++
++#elif defined( GLAZE_THREADS )
++    i_result = glaze_cond_signal( &p_condvar->cond );
+ 
+ #elif defined( HAVE_CTHREADS_H )
+     /* condition_signal() */
+@@ -500,6 +511,9 @@
+     if ( i_result )
+         psz_error = strerror(i_result);
+ 
++#elif defined( GLAZE_THREADS )
++    i_result = glaze_cond_wait( &p_condvar->cond, &p_mutex->mutex );
++
+ #elif defined( HAVE_CTHREADS_H )
+     condition_wait( (condition_t)p_condvar, (mutex_t)p_mutex );
+     i_result = 0;
+--- a/vlc/src/misc/threads.c
++++ b/vlc/src/misc/threads.c
+@@ -294,6 +294,9 @@
+ #   endif
+     return pthread_mutex_init( &p_mutex->mutex, NULL );
+ 
++#elif defined( GLAZE_THREADS )
++    return gz_mutex_init( &p_mutex->mutex );
++
+ #elif defined( HAVE_CTHREADS_H )
+     mutex_init( p_mutex );
+     return 0;
+@@ -348,6 +351,10 @@
+         i_thread = (int)pthread_self();
+         psz_error = strerror(i_result);
+     }
++
++#elif defined( GLAZE_THREADS )
++    gz_mutex_destroy( &p_mutex->mutex );
++    return 0;
+ 
+ #elif defined( HAVE_CTHREADS_H )
+     return 0;
+@@ -444,6 +451,9 @@
+ 
+ #elif defined( PTHREAD_COND_T_IN_PTHREAD_H )
+     return pthread_cond_init( &p_condvar->cond, NULL );
++
++#elif defined( GLAZE_THREADS )
++    return glaze_cond_init( &p_condvar->cond );
+ 
+ #elif defined( HAVE_CTHREADS_H )
+     /* condition_init() */
+@@ -498,6 +508,9 @@
+         psz_error = strerror(i_result);
+     }
+ 
++#elif defined( GLAZE_THREADS )
++    return glaze_cond_destroy( &p_condvar->cond );
++
+ #elif defined( HAVE_CTHREADS_H )
+     return 0;
+ 
+@@ -607,6 +620,9 @@
+         i_priority = 0;
+     }
+ #endif
++
++#elif defined( GLAZE_THREADS )
++    i_ret = glaze_thread_create( &p_this->thread_id, func, p_data );
+ 
+ #elif defined( HAVE_CTHREADS_H )
+     p_this->thread_id = cthread_fork( (cthread_fn_t)func, (any_t)p_data );
+@@ -769,6 +785,10 @@
+ #elif defined( PTHREAD_COND_T_IN_PTHREAD_H )
+     i_ret = pthread_join( p_this->thread_id, NULL );
+ 
++#elif defined( GLAZE_THREADS )
++    i_ret = glaze_thread_join( p_this->thread_id );
++    p_this->thread_id = NULL;
++
+ #elif defined( HAVE_CTHREADS_H )
+     cthread_join( p_this->thread_id );
+     i_ret = 1;
+--- a/vlc/src/misc/mtime.c
++++ b/vlc/src/misc/mtime.c
+@@ -46,6 +46,10 @@
+ #   include <kernel/OS.h>
+ #endif
+ 
++#if defined( GLAZE_THREADS )
++#   include <glaze/sys.h>                      /* monotonic clock, sleep */
++#endif
++
+ #if defined( WIN32 ) || defined( UNDER_CE )
+ #   include <windows.h>
+ #else
+@@ -117,6 +121,9 @@
+ #if defined( HAVE_KERNEL_OS_H )
+     return( real_time_clock_usecs() );
+ 
++#elif defined( GLAZE_THREADS )
++    return (mtime_t)gz_time_us();
++
+ #elif defined( WIN32 ) || defined( UNDER_CE )
+     /* We don't need the real date, just the value of a high precision timer */
+     static mtime_t freq = I64C(-1);
+@@ -227,6 +234,12 @@
+     }
+     snooze( delay );
+ 
++#elif defined( GLAZE_THREADS )
++    /* The kernel sleeps in whole milliseconds: wake up early, not late. */
++    mtime_t delay = date - (mtime_t)gz_time_us();
++    if( delay >= 1000 )
++        gz_sleep_ms( (uint32_t)(delay / 1000) );
++
+ #elif defined( WIN32 ) || defined( UNDER_CE )
+     mtime_t usec_time, delay;
+ 
+@@ -304,6 +317,10 @@
+ #elif defined( ST_INIT_IN_ST_H )
+     st_usleep( delay );
+ 
++#elif defined( GLAZE_THREADS )
++    if( delay > 0 )
++        gz_sleep_ms( (uint32_t)((delay + 999) / 1000) );
++
+ #elif defined( WIN32 ) || defined( UNDER_CE )
+     Sleep( (int) (delay / 1000) );
+ 
