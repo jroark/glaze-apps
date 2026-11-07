@@ -7,3 +7,5 @@
 
 Doom's package links the engine as `packages/doom/engine`. Chat's `packages/chatgpt/http/`
 holds copies of glaze-os code and stb_image.h; see its README.
+Maps' `packages/maps/puff.c` and `puff.h` are Mark Adler's puff 2.3 (zlib licence, from
+glaze-os `third_party/puff`), changed only to use GCC's setjmp builtins on the device.

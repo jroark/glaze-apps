@@ -1,0 +1,4 @@
+# Maps preinstalled as the only package, with /Maps/demo.gzmap and a GPS card
+# replaying glaze-os tests/gps/track.nmea (tests/run_maps.py).
+3000 drag 40 280 235 280 500
+4500 tap 90 192
