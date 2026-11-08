@@ -23,7 +23,7 @@ $(WOLFSSL_LIB): FORCE
 
 .DEFAULT_GOAL := check
 # doom-test also runs the full engine when DOOM_WAD=/absolute/path/doom1.wad.
-check: aim-test gmail-test chatgpt-test somafm-ui-test maps-ui-test tetris-test snake-test flappy-test twixt-test chess-test doom-test breakout-test pacman-test
+check: aim-test gmail-test chatgpt-test somafm-ui-test maps-ui-test tetris-test snake-test flappy-test twixt-test chess-test doom-test breakout-test sky1942-test pacman-test
 .PHONY: check FORCE
 FORCE:
 
@@ -139,6 +139,12 @@ breakout-test: ../tests/native/breakout.c ../packages/breakout/game.c ../package
 	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/breakout-test
 	UBSAN_OPTIONS=halt_on_error=1 $(O)/breakout-test
 .PHONY: breakout-test
+
+# Sky Raid rules and save-state validation.
+sky1942-test: ../tests/native/sky1942.c ../packages/sky1942/game.c ../packages/sky1942/game.h
+	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/sky1942-test
+	UBSAN_OPTIONS=halt_on_error=1 $(O)/sky1942-test
+.PHONY: sky1942-test
 
 # Pac-Man rules and save-state validation.
 pacman-test: ../tests/native/pacman.c ../packages/pacman/game.c ../packages/pacman/game.h

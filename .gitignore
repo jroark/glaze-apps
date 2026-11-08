@@ -8,6 +8,11 @@ __pycache__/
 # Doom game data stays external.
 *.[wW][aA][dD]
 
+# 1942: the arcade sprite sheets are ripped game data, so sources fetched by
+# packages/sky1942/art/arcade_art.py stay out of git (its res/ overwrite is
+# visible and must not be committed; restore with art/draw_art.py).
+packages/sky1942/art/src/
+
 # Local secrets (tile provider keys for tools/mkmaptiles.py)
 .env
 

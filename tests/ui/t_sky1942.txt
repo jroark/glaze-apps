@@ -1,0 +1,28 @@
+# Sky Raid: card holds only sky1942.gzp. Install, launch, fly, pause.
+# The guns fire on their own; arrows are held and the plane is dragged.
+# unlock swipe
+3000 drag 40 280 235 280 500
+# Files icon on the home screen
+4500 tap 30 120
+# Card row in Files
+6500 tap 120 64
+# first file on the card: sky1942.gzp
+8500 tap 120 64
+# Install on Flash
+10500 tap 120 242
+# OK on the "installed" message
+15000 tap 120 203
+# back to the home screen, then the new app's icon
+16000 key home
+18000 tap 90 192
+# --- sky1942 is in front from about 19000; wave 1 intro lasts ~2 s ---
+21000 key left 1200
+23000 key right 2000
+25500 key up 400
+27000 key down 400
+# drag the plane left across the sea (screen y 282 = field y ~206)
+28500 drag 120 282 60 282 600
+# tap to jump the plane to the right
+30000 tap 180 282
+# pause (this saves); the final frame is the pause menu
+31500 key esc
