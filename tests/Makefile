@@ -23,7 +23,7 @@ $(WOLFSSL_LIB): FORCE
 
 .DEFAULT_GOAL := check
 # doom-test also runs the full engine when DOOM_WAD=/absolute/path/doom1.wad.
-check: aim-test gmail-test chatgpt-test somafm-ui-test maps-ui-test tetris-test snake-test flappy-test twixt-test chess-test doom-test
+check: aim-test gmail-test chatgpt-test somafm-ui-test maps-ui-test tetris-test snake-test flappy-test twixt-test chess-test doom-test breakout-test
 .PHONY: check FORCE
 FORCE:
 
@@ -133,3 +133,9 @@ doom-test: $(O)/doom-test
 	$(O)/doom-test
 	$(if $(DOOM_WAD),ASAN_OPTIONS=detect_leaks=0 $(O)/doom-test "$(DOOM_WAD)",@echo "Optional full engine test: make doom-test DOOM_WAD=/absolute/path/doom1.wad")
 .PHONY: doom-test
+
+# Breakout rules and save-state validation.
+breakout-test: ../tests/native/breakout.c ../packages/breakout/game.c ../packages/breakout/game.h
+	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/breakout-test
+	UBSAN_OPTIONS=halt_on_error=1 $(O)/breakout-test
+.PHONY: breakout-test
