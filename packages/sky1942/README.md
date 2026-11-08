@@ -23,15 +23,20 @@ State is a versioned, checksummed record in `data/state`, replaced through a
 temporary file. The world runs on fixed 20 ms steps, so replays of one save
 are identical. An invalid save starts a fresh game.
 
-Art: the default sprites in `res/` are drawn for this app by
-`packages/sky1942/art/draw_art.py` (pixel maps in the script; the generated
-GZIs are committed, re-run the script after editing the maps). Optionally,
+Art: the default sprites in `res/` and `icon.gzi` are drawn for this app
+by `packages/sky1942/art/draw_art.py` (Pillow and the shared
+`tools/gzart.py`; `--sheet out.png` writes a contact sheet): shaded top-down
+planes, fireball explosion frames, tracer and bomb glows, plus scenery (a
+tileable sea, islands with surf, and soft clouds) that scrolls down under
+the planes, which cast shadows on the water. The generated GZIs are
+committed; re-run the script after editing it. Optionally,
 `python3 packages/sky1942/art/arcade_art.py` swaps in the original Capcom
 arcade sprites from a fan remake's image dump
 ([kavros/1942-Arcade-Game](https://github.com/kavros/1942-Arcade-Game), code
 Apache-2.0, but the sheets are Capcom's and not freely licensed, so never
-commit that swap). Without `res/` at all the app draws simple placeholder
-shapes and plays the same.
+commit that swap). It replaces only the plane, shot, bomb and explosion
+sprites, so the scenery stays. Without `res/` at all the app draws simple
+placeholder shapes and plays the same.
 
 Tests: `make -C tests sky1942-test` (rules, determinism and saves,
 ASan/UBSan). For the emulator:
