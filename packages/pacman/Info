@@ -1,0 +1,4 @@
+id=pacman
+name=Muncher
+version=1.0
+exec=app
