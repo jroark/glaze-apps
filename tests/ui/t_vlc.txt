@@ -1,6 +1,8 @@
-# VLC stage 1 (Phase 1 boot): install from the CF card and launch. The app
-# starts libvlc with the dummy interface and outputs, logs "vlc: <version>
-# ready", and exits. CF holds only vlc.gzp:
+# VLC: install from the CF card and launch. Until the libui interface, the
+# app starts libvlc with the dummy interface and the Glaze audio and video
+# outputs, logs "vlc: <version> ready", plays /Card/autoplay.m3u if the card
+# has one (logging progress, frame rates and audio underruns), and exits.
+# The card needs only vlc.gzp:
 #   ../glaze-os/tools/mkcfimg.sh out/vlc-cf.img 16 16 out/pkg/vlc.gzp
 #   CF=out/vlc-cf.img ../glaze-os/tests/run.sh tests/ui/t_vlc.txt 40
 # Install taps match t_chess.txt.

@@ -17,7 +17,7 @@ typedef struct glaze_thread *vlc_thread_t;
 struct glaze_cond {
     struct gz_mutex lock;       /* guards waiters */
     int waiters;                /* threads blocked or about to block */
-    int sem;                    /* one post per woken waiter */
+    int sem;                    /* one post per woken waiter; made on first wait */
 };
 
 int glaze_cond_init(struct glaze_cond *c);

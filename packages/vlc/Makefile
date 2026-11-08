@@ -60,8 +60,12 @@ MAD_SRC := $(addprefix libmad/,bit.c decoder.c fixed.c frame.c huffman.c layer12
 MPEG2_SRC := $(addprefix libmpeg2/libmpeg2/,alloc.c cpu_accel.c cpu_state.c decode.c header.c \
     idct.c motion_comp.c slice.c)
 GLUE_SRC := $(wildcard glaze/*.c)
+# Glaze's own modules (glaze/modules/<name>.c): builtins under the glue's
+# warning policy.
+GLUE_MODULES := aout_glaze vout_glaze codec_mjpeg
+GMOD_SRC := $(addprefix glaze/modules/,$(addsuffix .c,$(GLUE_MODULES)))
 
-SOURCES := $(GLUE_SRC) $(CORE_SRC) $(foreach m,$(MODULES),$(MOD_$(m))) $(MAD_SRC) $(MPEG2_SRC)
+SOURCES := $(GLUE_SRC) $(GMOD_SRC) $(CORE_SRC) $(foreach m,$(MODULES),$(MOD_$(m))) $(MAD_SRC) $(MPEG2_SRC)
 
 include $(GLAZE_SDK)/share/app.mk
 
@@ -71,6 +75,8 @@ CPPFLAGS += -Iglaze -include glaze/compat.h -DHAVE_CONFIG_H -D__VLC__ -DSYS_GLAZ
     -fno-strict-aliasing -fwrapv -Wno-unused-parameter
 # Soft-float builtins for the core's few float paths (exported by the SDK).
 LDLIBS += -l:libsoftfp.a
+# The standard JPEG Huffman tables for Motion-JPEG frames (codec_mjpeg).
+LDLIBS += -l:libmedia.so.1
 
 VENDOR_OBJ := $(patsubst %.c,$(BUILD)/%.o,$(CORE_SRC) $(foreach m,$(MODULES),$(MOD_$(m))) $(MAD_SRC) $(MPEG2_SRC))
 # Upstream's warning policy is kept apart from the Glaze glue.
@@ -88,6 +94,7 @@ define BUILTIN
 $(patsubst %.c,$(BUILD)/%.o,$(MOD_$(1))): CPPFLAGS += -D__BUILTIN__ -DMODULE_NAME=$(1) -DMODULE_NAME_IS_$(1)
 endef
 $(foreach m,$(MODULES),$(eval $(call BUILTIN,$(m))))
+$(foreach m,$(GLUE_MODULES),$(eval MOD_$(m) := glaze/modules/$(m).c)$(eval $(call BUILTIN,$(m))))
 
 # The list the core registers at start-up (src/misc/modules_builtin.h).
 $(BUILD)/gen/modules_builtin.h: Makefile

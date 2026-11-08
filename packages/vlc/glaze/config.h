@@ -93,6 +93,10 @@
  * Deliberately absent: HAVE_DYNAMIC_PLUGINS, HAVE_FPU, ENABLE_NLS, ENABLE_SOUT,
  * ENABLE_VLM, ENABLE_HTTPD, HAVE_ICONV, HAVE_SIGNAL_H, HAVE_SETLOCALE. */
 
+/* configure's --enable-optimize-memory, as the Windows CE builds had: a
+ * 128 KiB stream cache instead of 12 MiB, and a 5-picture video heap. */
+#define OPTIMIZE_MEMORY         1
+
 #define DEFAULT_CODESET         "UTF-8"
 #define WORDS_BIGENDIAN_IS_NOT_SET
 #define CAN_COMPILE_C_ALTIVEC_IS_NOT_SET

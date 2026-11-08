@@ -14,7 +14,15 @@
  * waiter, so a signal sent between the release and the semaphore wait is
  * kept rather than lost. A signal with nobody waiting does nothing, as
  * with pthreads.
+ *
+ * The kernel has 256 semaphores for the whole system, and VLC gives every
+ * object (each module included) a cond it mostly never waits on, so the
+ * semaphore is made on the first wait and kept until destroy. If none can
+ * be had, the wait degrades to a short sleep: a spurious wakeup, which
+ * callers that re-check their condition already allow for.
  */
+#define COND_POLL_MS 10
+
 int glaze_cond_init(struct glaze_cond *c)
 {
     int r = gz_mutex_init(&c->lock);
@@ -22,11 +30,7 @@ int glaze_cond_init(struct glaze_cond *c)
     if (r < 0)
         return r;
     c->waiters = 0;
-    c->sem = gz_sem_create(0);
-    if (c->sem < 0) {
-        gz_mutex_destroy(&c->lock);
-        return c->sem;
-    }
+    c->sem = 0;
     return 0;
 }
 
@@ -53,6 +57,17 @@ int glaze_cond_signal(struct glaze_cond *c)
 int glaze_cond_wait(struct glaze_cond *c, struct gz_mutex *m)
 {
     gz_mutex_lock(&c->lock);
+    if (c->sem <= 0) {
+        int sem = gz_sem_create(0);
+        if (sem < 0) {
+            gz_mutex_unlock(&c->lock);
+            gz_mutex_unlock(m);
+            gz_sleep_ms(COND_POLL_MS);
+            gz_mutex_lock(m);
+            return 0;
+        }
+        c->sem = sem;
+    }
     c->waiters++;
     gz_mutex_unlock(&c->lock);
 

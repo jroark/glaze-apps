@@ -51,13 +51,17 @@ Copyright notices in the individual files remain in place.
 Everything else Glaze needs is outside the vendored tree, in `packages/vlc/glaze/`:
 `config.h` in place of autoconf's, the compat layer (`compat.h`, `printf.c`,
 `stdio.c`, `libc.c`, `math.c`, `sysinc/`), stubs for the core parts left out
-(stream output, OSD menu files), and the Glaze modules.
+(stream output, OSD menu files), and the Glaze modules in `glaze/modules/`: the audio
+output (`aout_glaze`, the audio server's stream mode), the video output
+(`vout_glaze`, the libui surface) and a Motion-JPEG decoder (`codec_mjpeg`, on
+stb_image, since VLC 0.8 decoded MJPEG only through ffmpeg).
 
 ## Build notes
 
 Modules are linked in as builtins (`-D__BUILTIN__`), with no plugin loader and no
 FPU: audio takes 0.8's fixed-point path (libmad, fixed32, s16). libmad uses
 `FPM_64BIT` (the VR4131's 32x32->64 multiply); its `FPM_MIPS` assembly uses `hi`/`lo`
-constraints current GCC no longer accepts. Flags are MIPS2/O32 soft-float PIC with
+constraints current GCC no longer accepts. `OPTIMIZE_MEMORY` is set, as the CE
+builds had it: otherwise every input allocates a 12 MiB stream cache. Flags are MIPS2/O32 soft-float PIC with
 `-fno-strict-aliasing -fwrapv`; a few upstream warning categories are turned off
 for vendor objects only.
