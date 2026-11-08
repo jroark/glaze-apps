@@ -42,6 +42,57 @@ static void draw_sprite(gfx_surface *s, const gfx_image *im, int cx, int cy)
     gfx_draw_image(s, cx - im->w / 2, cy - im->h / 2, im, 255);
 }
 
+/* Scenery from res/ (art/draw_art.py): a sea tile, islands and clouds. The
+ * arcade swap leaves these alone; without them the flat sea stands in. */
+static bool scenery;
+static gfx_image im_sea, im_island[2], im_cloud[2];
+
+static void load_scenery(void)
+{
+    scenery = res_image(&im_sea, "sea.gzi") && res_image(&im_island[0], "island0.gzi")
+           && res_image(&im_island[1], "island1.gzi") && res_image(&im_cloud[0], "cloud0.gzi")
+           && res_image(&im_cloud[1], "cloud1.gzi");
+}
+
+/* A plane's shadow on the sea below it, then the plane. */
+static void draw_flyer(gfx_surface *s, const gfx_image *im, int cx, int cy)
+{
+    gfx_draw_mask(s, cx - im->w / 2 + 6, cy - im->h / 2 + 9, im, 0x000000, 70);
+    draw_sprite(s, im, cx, cy);
+}
+
+/* The world scrolls down under the planes: sea, islands at fixed world
+ * rows (spaced ISLE px), then clouds drifting a little faster. */
+#define ISLE 230u
+static void draw_scenery(gfx_surface *s)
+{
+    uint32_t sc = game.scroll;
+    int off = (int)(sc % (uint32_t)im_sea.h);
+    for (int y = off - im_sea.h; y < FIELD_H; y += im_sea.h)
+        for (int x = 0; x < FIELD_W; x += im_sea.w)
+            gfx_draw_image(s, FX + x, FY + y, &im_sea, 255);
+    for (uint32_t j = 0; j < 2 && j <= sc / ISLE; j++) {  /* the two rows that can be on screen */
+        uint32_t k = sc / ISLE - j, h = k * 2654435761u;
+        const gfx_image *im = &im_island[(h >> 7) & 1];
+        int x = (int)((h >> 9) % (uint32_t)(FIELD_W - 20)) + 10;
+        int y = (int)(sc - k * ISLE) - 60;                 /* world row k*ISLE, moving down */
+        if ((h >> 3) % 3)                                  /* not every row has an island */
+            draw_sprite(s, im, FX + x, FY + y);
+    }
+    uint32_t csc = sc * 3 / 2;
+    for (uint32_t k = csc / 150u + 1;; k--) {
+        uint32_t h = k * 2246822519u;
+        int x = (int)((h >> 8) % (uint32_t)(FIELD_W + 20)) - 10;
+        int y = (int)(csc - k * 150u) - 40;
+        if (y > FIELD_H + 40)
+            break;
+        if ((h >> 4) & 1)
+            draw_sprite(s, &im_cloud[(h >> 5) & 1], FX + x, FY + y);
+        if (k == 0)
+            break;
+    }
+}
+
 /* Write to a temp file, then rename, so a crash never leaves half a save. */
 static void save(void)
 {
@@ -98,17 +149,21 @@ static void draw(void)
     /* Sea with scrolling foam rows and cloud puffs. */
     gfx_fill(s, gfx_r(FX, FY, FIELD_W, FIELD_H), 0x17395C);
     gfx_set_clip(s, gfx_r(FX, FY, FIELD_W, FIELD_H));
-    int r0 = game.scroll / 16, off = game.scroll % 16;
-    for (int i = 0; i < 16; i++) {
-        int r = r0 + i;
-        int y = FY + i * 16 - off;
-        if (r % 7 == 3) {
-            int cx = FX + (int)(((unsigned)r * 89u + 53u) % (unsigned)(FIELD_W - 70)) + 20;
-            gfx_circle(s, cx, y + 8, 13, 0xE6EEF6, 150);
-            gfx_circle(s, cx + 14, y + 10, 9, 0xE6EEF6, 150);
-        } else {
-            int cx = FX + (int)(((unsigned)r * 53u + 29u) % (unsigned)(FIELD_W - 40)) + 10;
-            gfx_fill(s, gfx_r(cx, y, 20, 2), 0x1F4A76);
+    if (scenery) {
+        draw_scenery(s);
+    } else {
+        int r0 = game.scroll / 16, off = game.scroll % 16;
+        for (int i = 0; i < 16; i++) {
+            int r = r0 + i;
+            int y = FY + i * 16 - off;
+            if (r % 7 == 3) {
+                int cx = FX + (int)(((unsigned)r * 89u + 53u) % (unsigned)(FIELD_W - 70)) + 20;
+                gfx_circle(s, cx, y + 8, 13, 0xE6EEF6, 150);
+                gfx_circle(s, cx + 14, y + 10, 9, 0xE6EEF6, 150);
+            } else {
+                int cx = FX + (int)(((unsigned)r * 53u + 29u) % (unsigned)(FIELD_W - 40)) + 10;
+                gfx_fill(s, gfx_r(cx, y, 20, 2), 0x1F4A76);
+            }
         }
     }
 
@@ -120,7 +175,7 @@ static void draw(void)
         if (art) {
             const gfx_image *im = e->type == E_BOMBER ? &im_bomber
                                 : e->type == E_DIVER ? &im_diver : &im_fighter;
-            draw_sprite(s, im, x, y);
+            draw_flyer(s, im, x, y);
         } else if (e->type == E_BOMBER) {
             gfx_fill(s, gfx_r(x - 13, y - 2, 27, 5), 0x5D7C3C);
             gfx_fill(s, gfx_r(x - 2, y - 8, 5, 18), 0x71934B);
@@ -158,7 +213,7 @@ static void draw(void)
     if (!(game.inv && (game.inv / 4) % 2) && !game.over) {
         int x = FX + game.px, y = FY + game.py;
         if (art) {
-            draw_sprite(s, &im_player, x, y);
+            draw_flyer(s, &im_player, x, y);
         } else {
             draw_plane(s, x, y, 9, 8, 0xF4F8FC, 0xDCE6F2);
             gfx_fill(s, gfx_r(x - 1, y - 4, 3, 4), 0x3E6FA3);
@@ -295,6 +350,7 @@ int main(void)
     snprintf(path, sizeof(path), "%s/data/state", res_bundle());
     snprintf(temp, sizeof(temp), "%s/data/state.tmp", res_bundle());
     load_art();
+    load_scenery();
 
     uint8_t bytes[SAVE_BYTES + 1];  /* +1 so an oversized file fails decode */
     int size = fs_read_file(path, bytes, sizeof(bytes));
