@@ -295,10 +295,31 @@ static void frame(int x, int y, uint32_t rgb)
     gfx_fill(s, gfx_r(x + CELL - 2, y + 2, 2, CELL - 4), rgb);
 }
 
+/* Sprites from res/ (art/draw_art.py); without them lettered discs stand in. */
+static bool art;
+static gfx_image im_piece[2][7], im_board;
+static void load_art(void)
+{
+    static const char kinds[] = "?pnbrqk";
+    char n[16];
+    art = res_image(&im_board, "board.gzi");
+    for (int c = 0; art && c < 2; c++)
+        for (int k = 1; art && k <= 6; k++) {
+            snprintf(n, sizeof n, "%c%c.gzi", c ? 'b' : 'w', kinds[k]);
+            art = res_image(&im_piece[c][k], n);
+        }
+}
+
 static void draw_piece(int x, int y, int p)
 {
     static const char names[] = "?PNBRQK"; /* kind nibble indexes names[] */
     char ch[2] = { names[p & 7], 0 };
+
+    if (art && (p & 7) >= 1 && (p & 7) <= 6) {
+        const gfx_image *im = &im_piece[(p & C_WHITE) ? 0 : 1][p & 7];
+        gfx_draw_image(&ui.surf, x + CELL / 2 - im->w / 2 + 1, y + CELL / 2 - im->h / 2, im, 255);
+        return;
+    }
 
     if (p & C_WHITE) {
         gfx_round_rect(&ui.surf, gfx_r(x + 2, y + 2, 20, 20), 10, 0xB9C6DA, 255);
@@ -342,19 +363,39 @@ static void draw(void)
 
     if (g.result == C_ONGOING && c_in_check(&g, g.side))
         check_sq = king_square(g.side);
-    gfx_fill(s, gfx_r(cell0 - 1, row0 - 1, 8 * CELL + 2, 8 * CELL + 2), 0x40536D);
+    if (art) {
+        /* a walnut frame, then the inlaid board */
+        gfx_round_rect_vgradient(s, gfx_r(cell0 - 4, row0 - 4, 8 * CELL + 8, 8 * CELL + 8), 4, 0x6A4428, 0x3A2414, 255);
+        gfx_fill(s, gfx_r(cell0 - 1, row0 - 1, 8 * CELL + 2, 8 * CELL + 2), 0x1E120A);
+        gfx_draw_image(s, cell0, row0, &im_board, 255);
+    } else {
+        gfx_fill(s, gfx_r(cell0 - 1, row0 - 1, 8 * CELL + 2, 8 * CELL + 2), 0x40536D);
+    }
     for (rank = 0; rank < 8; rank++)
         for (file = 0; file < 8; file++) {
             int sq = rank * 16 + file, x = cell0 + file * CELL, y = row0 + rank * CELL;
 
-            gfx_fill(s, gfx_r(x, y, CELL, CELL), ((rank + file) & 1) ? 0x243652 : 0x46608A);
+            if (!art)
+                gfx_fill(s, gfx_r(x, y, CELL, CELL), ((rank + file) & 1) ? 0x243652 : 0x46608A);
             if (sq == last_from || sq == last_to)
-                gfx_fill_alpha(s, gfx_r(x, y, CELL, CELL), 0x52749C, 110);
-            if (sq == check_sq)
-                gfx_fill_alpha(s, gfx_r(x, y, CELL, CELL), 0xC0453C, 120);
-            if (sel >= 0 && sq != sel && legal_at(sel, sq))
-                gfx_fill_alpha(s, gfx_r(x + 8, y + 8, 8, 8),
-                               g.sq[sq] ? 0xD06A5E : 0xCBAA5E, 200);
+                gfx_fill_alpha(s, gfx_r(x, y, CELL, CELL), art ? 0xE8D050 : 0x52749C, art ? 90 : 110);
+            if (sq == check_sq) {
+                if (art) {
+                    gfx_circle(s, x + CELL / 2, y + CELL / 2, 12, 0xFF2020, 90);
+                    gfx_circle(s, x + CELL / 2, y + CELL / 2, 8, 0xFF4030, 110);
+                } else {
+                    gfx_fill_alpha(s, gfx_r(x, y, CELL, CELL), 0xC0453C, 120);
+                }
+            }
+            if (sel >= 0 && sq != sel && legal_at(sel, sq)) {
+                if (!art)
+                    gfx_fill_alpha(s, gfx_r(x + 8, y + 8, 8, 8),
+                                   g.sq[sq] ? 0xD06A5E : 0xCBAA5E, 200);
+                else if (g.sq[sq])      /* a capture: a red glow under the target */
+                    gfx_circle(s, x + CELL / 2, y + CELL / 2, 11, 0xE04030, 120);
+                else
+                    gfx_circle(s, x + CELL / 2, y + CELL / 2, 4, 0x20301A, 110);
+            }
             if (g.sq[sq])
                 draw_piece(x, y, g.sq[sq]);
             if (sq == sel)
@@ -487,6 +528,7 @@ int main(void)
 {
     ui_init(SB_STATUS_GRAY);
     mm_init_once();
+    load_art();
     snprintf(path, sizeof path, "%s/data", res_bundle());
     fs_mkdirs(path);
     snprintf(path, sizeof path, "%s/data/state", res_bundle());

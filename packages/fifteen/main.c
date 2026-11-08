@@ -51,18 +51,48 @@ static void shuffle(void)
     game.moves = 0;
     save();
 }
+/* Sprites from res/ (art/draw_art.py); without them flat tiles stand in. */
+static bool art;
+static gfx_image im_tile[4], im_tray, im_linen;
+static void load_art(void)
+{
+    art = res_image(&im_tile[0], "tile0.gzi") && res_image(&im_tile[1], "tile1.gzi")
+       && res_image(&im_tile[2], "tile2.gzi") && res_image(&im_tile[3], "tile3.gzi")
+       && res_image(&im_tray, "tray.gzi") && res_image(&im_linen, "linen.gzi");
+}
 static void draw(void)
 {
     gfx_surface *s = &ui.surf;
-    ui_draw_pinstripes(s, gfx_r(0, 0, UI_W, UI_H));
+    if (art)
+        for (int y = 30; y < UI_H; y += im_linen.h)
+            for (int x = 0; x < UI_W; x += im_linen.w)
+                gfx_draw_image(s, x, y, &im_linen, 255);
+    else
+        ui_draw_pinstripes(s, gfx_r(0, 0, UI_W, UI_H));
     ui_draw_navbar(s, "Fifteen", NULL, NULL, 0);
     again = ui_draw_bar_button(s, "New", true, false, false, 0);
     char text[40];
     snprintf(text, sizeof(text), solved() ? "Well done! %u moves" : "Moves: %u", game.moves);
-    gfx_text_center(s, 0, 43, UI_W, ui_font(FONT_B14), text, 0x385487, 255);
-    gfx_round_rect(s, gfx_r(14, 72, 212, 212), 9, 0x47546A, 255);
+    gfx_text_center(s, 0, 43, UI_W, ui_font(FONT_B14), text, art ? 0x3A2A1C : 0x385487, 255);
+    if (art) {
+        gfx_round_rect(s, gfx_r(16, 76, 212, 212), 10, 0x000000, 60);   /* the tray's shadow */
+        gfx_draw_image(s, 14, 72, &im_tray, 255);
+    } else {
+        gfx_round_rect(s, gfx_r(14, 72, 212, 212), 9, 0x47546A, 255);
+    }
     for (int i = 0; i < 16; i++) {
         int x = 19 + (i % 4) * 51, y = 77 + (i / 4) * 51;
+        if (art) {
+            if (!game.tile[i])
+                continue;
+            gfx_draw_image(s, x, y, &im_tile[game.tile[i] % 4], 255);
+            snprintf(text, sizeof(text), "%u", game.tile[i]);
+            /* engraved: a light lip under dark numerals */
+            gfx_text_center(s, x, y + 13, 49, ui_font(FONT_B20), text, 0xFFF0D0, 150);
+            gfx_text_center(s, x, y + 12, 49, ui_font(FONT_B20), text,
+                            game.tile[i] == i + 1 ? 0x2E4A1E : 0x4A2E18, 255);
+            continue;
+        }
         if (!game.tile[i]) {
             gfx_round_rect(s, gfx_r(x, y, 49, 49), 5, 0x344154, 255);
             continue;
@@ -77,6 +107,7 @@ static void draw(void)
 int main(void)
 {
     ui_init(SB_STATUS_GRAY);
+    load_art();
     snprintf(path, sizeof(path), "%s/data", res_bundle());
     fs_mkdirs(path);
     snprintf(path, sizeof(path), "%s/data/board", res_bundle());

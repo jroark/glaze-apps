@@ -17,8 +17,22 @@ static void save(void)
     if(!save_failed)save_failed=fs_rename(temp,path)<0;
 }
 static void clear_input(void){held_key=-1;}
+/* Sprites from res/ (art/draw_art.py); without them the flat blocks stand in. */
+static bool art;
+static gfx_image im_block[8],im_ghost,im_well;
+static void load_art(void)
+{
+    char n[16];
+    art=res_image(&im_ghost,"ghost.gzi")&&res_image(&im_well,"well.gzi");
+    for(int i=1;art&&i<=7;i++){snprintf(n,sizeof(n),"block%d.gzi",i);art=res_image(&im_block[i],n);}
+}
 static void block(int x,int y,int p,bool ghost)
 {
+    if(art){
+        if(ghost)gfx_draw_mask(&ui.surf,x,y,&im_ghost,colors[p],230);  /* the landing spot, in the piece's colour */
+        else gfx_draw_image(&ui.surf,x,y,&im_block[p],255);
+        return;
+    }
     uint32_t c=colors[p];
     gfx_fill(&ui.surf,gfx_r(x,y,9,9),c);
     gfx_fill(&ui.surf,gfx_r(x+1,y+1,7,7),ghost?0x182539:c);
@@ -30,13 +44,27 @@ static void preview(int p,int y)
     if(p<0)return;
     for(int j=0;j<4;j++)for(int i=0;i<4;i++)if(game_cell(p,0,i,j))block(144+i*10,y+j*10,p+1,false);
 }
+/* A rounded, softly lit panel behind side-bar text. */
+static void panel(int x,int y,int w,int h)
+{
+    gfx_round_rect_vgradient(&ui.surf,gfx_r(x,y,w,h),6,0x26364F,0x172234,255);
+    gfx_fill_alpha(&ui.surf,gfx_r(x+5,y+1,w-10,1),0xFFFFFF,40);
+}
 static void draw(void)
 {
     gfx_surface *s=&ui.surf;
     gfx_fill(s,gfx_r(0,0,UI_W,UI_H),0x101B2B);
-    ui_draw_navbar(s,"Blocks",NULL,NULL,0);
-    gfx_fill(s,gfx_r(13,41,104,202),0x40536D);
-    gfx_fill(s,gfx_r(15,42,100,200),0x182539);
+    ui_draw_navbar(s,"Blocks",NULL,NULL,art?1:0);
+    if(art){
+        gfx_vgradient(s,gfx_r(0,30,UI_W,UI_H-30),0x16223A,0x0A101C,255);
+        gfx_round_rect_vgradient(s,gfx_r(10,38,110,208),5,0x5A6E92,0x2A3650,255);   /* the well's frame */
+        gfx_fill(s,gfx_r(14,41,102,202),0x05080F);
+        gfx_draw_image(s,15,42,&im_well,255);
+        panel(126,40,108,60);panel(126,104,108,52);panel(126,160,108,88);
+    }else{
+        gfx_fill(s,gfx_r(13,41,104,202),0x40536D);
+        gfx_fill(s,gfx_r(15,42,100,200),0x182539);
+    }
     for(int y=2;y<TH;y++)for(int x=0;x<TW;x++){
         int p=game.board[y][x];
         if(p)block(15+x*10,42+(y-2)*10,p,false);
@@ -49,12 +77,13 @@ static void draw(void)
         }
     }
     char b[32];
-    text(130,43,"SCORE");snprintf(b,sizeof(b),"%u",game.score);text(130,60,b);
-    text(130,80,"BEST");snprintf(b,sizeof(b),"%u",game.best);text(130,97,b);
-    snprintf(b,sizeof(b),"Lines %u",game.lines);text(130,119,b);
-    snprintf(b,sizeof(b),"Level %u",game_level(&game));text(130,138,b);
-    text(130,161,"NEXT");preview(game.next,180);
-    text(130,207,"HOLD");preview(game.hold,224);
+    gfx_text(s,132,43,ui_font(FONT_B10),"SCORE",0x7FA0CC,255);snprintf(b,sizeof(b),"%u",game.score);text(132,55,b);
+    gfx_text(s,132,72,ui_font(FONT_B10),"BEST",0x7FA0CC,255);snprintf(b,sizeof(b),"%u",game.best);
+    gfx_text(s,132,83,ui_font(FONT_B14),b,0xFFD27A,255);
+    snprintf(b,sizeof(b),"Lines %u",game.lines);text(132,111,b);
+    snprintf(b,sizeof(b),"Level %u",game_level(&game));text(132,131,b);
+    gfx_text(s,132,163,ui_font(FONT_B10),"NEXT",0x7FA0CC,255);preview(game.next,176);
+    gfx_text(s,132,205,ui_font(FONT_B10),"HOLD",0x7FA0CC,255);preview(game.hold,218);
     gfx_text_center(s,0,254,240,ui_font(FONT_B12),"Left / Right move   Down soft drop",0xA6BAD2,255);
     gfx_text_center(s,0,274,240,ui_font(FONT_B12),"Up turn   OK drop   ESC menu",0xA6BAD2,255);
     if(paused||game.over){
@@ -97,6 +126,7 @@ static void restart(void){game_new(&game,gz_time_ms(),game.best);paused=confirm=
 int main(void)
 {
     ui_init(SB_STATUS_GRAY);
+    load_art();
     snprintf(path,sizeof(path),"%s/data",res_bundle());fs_mkdirs(path);
     snprintf(path,sizeof(path),"%s/data/state",res_bundle());
     snprintf(temp,sizeof(temp),"%s/data/state.tmp",res_bundle());

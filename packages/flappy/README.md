@@ -38,3 +38,10 @@ FS_FROM=out/shots/t_flappy/glaze.bin ../glaze-os/tests/run.sh tests/ui/t_flappy_
 The resume run launches the installed package from the previous filesystem,
 resumes the saved bird mid-field, flaps it past the pair ahead, then opens the
 pause menu.
+
+## Art
+
+`res/` and `icon.gzi` are drawn for this game by `art/draw_art.py`: the bird in three wing poses and five tilts, shaded pipes and caps, parallax hills and bushes, clouds and the ground strip.
+It needs Pillow and the shared helpers in `tools/gzart.py`; re-run it after
+editing (`--sheet out.png` writes a contact sheet). The GZIs are committed.
+Without `res/` the game draws its original flat shapes.
