@@ -1,6 +1,6 @@
-# 1942
+# Sky Raid
 
-A 1942-style vertical scrolling shooter for Glaze. Build with
+Sky Raid, a vertical scrolling shooter for Glaze. Build with
 `.claude/skills/glaze-build/scripts/build_app.sh sky1942`, then install
 `out/pkg/sky1942.gzp` from Files on a card.
 

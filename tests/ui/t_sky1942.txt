@@ -1,4 +1,4 @@
-# 1942: card holds only sky1942.gzp. Install, launch, fly, pause.
+# Sky Raid: card holds only sky1942.gzp. Install, launch, fly, pause.
 # The guns fire on their own; arrows are held and the plane is dragged.
 # unlock swipe
 3000 drag 40 280 235 280 500

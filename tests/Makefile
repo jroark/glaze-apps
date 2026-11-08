@@ -140,7 +140,7 @@ breakout-test: ../tests/native/breakout.c ../packages/breakout/game.c ../package
 	UBSAN_OPTIONS=halt_on_error=1 $(O)/breakout-test
 .PHONY: breakout-test
 
-# 1942 rules and save-state validation.
+# Sky Raid rules and save-state validation.
 sky1942-test: ../tests/native/sky1942.c ../packages/sky1942/game.c ../packages/sky1942/game.h
 	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/sky1942-test
 	UBSAN_OPTIONS=halt_on_error=1 $(O)/sky1942-test

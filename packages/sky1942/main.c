@@ -86,7 +86,7 @@ static void draw(void)
     gfx_surface *s = &ui.surf;
     char b[40];
     gfx_fill(s, gfx_r(0, 0, UI_W, UI_H), 0x0E1420);
-    ui_draw_navbar(s, "1942", NULL, NULL, 0);
+    ui_draw_navbar(s, "Sky Raid", NULL, NULL, 0);
 
     snprintf(b, sizeof(b), "Score %u", (unsigned)game.score);
     gfx_text(s, 10, 38, ui_font(FONT_B12), b, 0xE5ECF5, 255);
