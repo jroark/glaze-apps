@@ -36,3 +36,10 @@ FS_FROM=out/shots/t_snake/glaze.bin ../glaze-os/tests/run.sh tests/ui/t_snake_re
 
 The resume run launches the installed package from the previous filesystem,
 resumes the saved snake, steers it with arrows, then opens the pause menu.
+
+## Art
+
+`res/` and `icon.gzi` are drawn for this game by `art/draw_art.py`: a lawn tile, a shaded tube body in two stripe tones with joints, a head for each direction, and an apple.
+It needs Pillow and the shared helpers in `tools/gzart.py`; re-run it after
+editing (`--sheet out.png` writes a contact sheet). The GZIs are committed.
+Without `res/` the game draws its original flat shapes.

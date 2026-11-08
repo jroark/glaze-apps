@@ -61,3 +61,10 @@ FS_FROM=out/shots/t_chess/glaze.bin ../glaze-os/tests/run.sh tests/ui/t_chess_re
 The resume run launches the installed package from the previous filesystem,
 decodes the saved mid-game history into a fresh model and engine board,
 resumes, plays a3 with the touch picker, then opens the pause menu.
+
+## Art
+
+`res/` and `icon.gzi` are drawn for this game by `art/draw_art.py`: Staunton-style ivory and ebony pieces and a wooden board.
+It needs Pillow and the shared helpers in `tools/gzart.py`; re-run it after
+editing (`--sheet out.png` writes a contact sheet). The GZIs are committed.
+Without `res/` the game draws its original flat shapes.

@@ -26,20 +26,45 @@ static void save(void)
     printf("breakout: saved score=%u ok=%d\n", (unsigned)game.score, !save_failed);
 }
 
-static void draw(void)
+/* Sprites from res/ (art/draw_art.py); without them flat shapes stand in. */
+static bool art;
+static gfx_image im_brick[BRICK_ROWS], im_tough, im_steel, im_paddle, im_ball, im_back;
+static void load_art(void)
 {
-    gfx_surface *s = &ui.surf;
-    char b[40];
-    gfx_fill(s, gfx_r(0, 0, UI_W, UI_H), 0x0B1220);
-    ui_draw_navbar(s, "Breakout", NULL, NULL, 0);
+    char n[16];
+    art = res_image(&im_tough, "tough.gzi") && res_image(&im_steel, "steel.gzi")
+       && res_image(&im_paddle, "paddle.gzi") && res_image(&im_ball, "ball.gzi")
+       && res_image(&im_back, "back.gzi");
+    for (int i = 0; art && i < BRICK_ROWS; i++) {
+        snprintf(n, sizeof(n), "brick%d.gzi", i);
+        art = res_image(&im_brick[i], n);
+    }
+}
 
-    /* the walls the ball bounces off, then the field contents; the HUD row
-     * (y 33..47) sits clear above FIELD_T, and is drawn last anyway */
-    gfx_fill(s, gfx_r(FIELD_L - 3, FIELD_T - 3, 3, FIELD_BOTTOM - FIELD_T + 6), 0x1E3050);
-    gfx_fill(s, gfx_r(FIELD_R, FIELD_T - 3, 3, FIELD_BOTTOM - FIELD_T + 6), 0x1E3050);
-    gfx_fill(s, gfx_r(FIELD_L - 3, FIELD_T - 3, FIELD_R - FIELD_L + 6, 3), 0x1E3050);
+/* The last few ball positions, for a fading trail. */
+#define TRAIL 5
+static int trail_x[TRAIL], trail_y[TRAIL], trail_n;
 
-    /* bricks */
+static void draw_wall(gfx_surface *s, gfx_rect r)
+{
+    gfx_fill(s, r, 0x2A3E62);
+    if (r.w > r.h) {
+        gfx_fill(s, gfx_r(r.x, r.y, r.w, 1), 0x7A96C8);
+        gfx_fill(s, gfx_r(r.x, r.y + r.h - 1, r.w, 1), 0x141E34);
+    } else {
+        gfx_fill(s, gfx_r(r.x, r.y, 1, r.h), 0x7A96C8);
+        gfx_fill(s, gfx_r(r.x + r.w - 1, r.y, 1, r.h), 0x141E34);
+    }
+}
+
+static void draw_art_field(gfx_surface *s)
+{
+    gfx_set_clip(s, gfx_r(FIELD_L - 3, FIELD_T - 3, FIELD_R - FIELD_L + 6, UI_H - FIELD_T + 3));
+    for (int y = FIELD_T - 3; y < UI_H; y += im_back.h)
+        for (int x = FIELD_L - 3; x < FIELD_R + 3; x += im_back.w)
+            gfx_draw_image(s, x, y, &im_back, 255);
+    gfx_reset_clip(s);
+
     for (int r = 0; r < BRICK_ROWS; r++)
         for (int c = 0; c < BRICK_COLS; c++) {
             uint8_t hp = game.bricks[r][c];
@@ -47,14 +72,72 @@ static void draw(void)
                 continue;
             int x, y;
             game_brick_rect(r, c, &x, &y);
-            uint32_t col = hp == STEEL ? 0x6E7A8C : (hp > 1 ? 0xD08341 : 0x4C8FD6);
-            gfx_fill(s, gfx_r(x, y, BRICK_W, BRICK_H), col);
+            gfx_fill_alpha(s, gfx_r(x + 2, y + 2, BRICK_W, BRICK_H), 0x000000, 90);   /* drop shadow */
+            gfx_draw_image(s, x, y, hp == STEEL ? &im_steel : hp > 1 ? &im_tough : &im_brick[r], 255);
         }
 
-    /* paddle and ball */
+    draw_wall(s, gfx_r(FIELD_L - 4, FIELD_T - 4, 4, FIELD_BOTTOM - FIELD_T + 8));
+    draw_wall(s, gfx_r(FIELD_R, FIELD_T - 4, 4, FIELD_BOTTOM - FIELD_T + 8));
+    draw_wall(s, gfx_r(FIELD_L - 4, FIELD_T - 4, FIELD_R - FIELD_L + 8, 4));   /* over the bricks: the grid runs under the wall */
+
     int px = SUB_PX(game.paddle_x);
-    gfx_round_rect(s, gfx_r(px - PADDLE_W / 2, PADDLE_Y, PADDLE_W, PADDLE_H), 3, 0xE8EEF7, 255);
-    gfx_circle(s, SUB_PX(game.ball_x), SUB_PX(game.ball_y), BALL_HALF, 0xF2F5FA, 255);
+    gfx_fill_alpha(s, gfx_r(px - PADDLE_W / 2 + 2, PADDLE_Y + 3, PADDLE_W, PADDLE_H), 0x000000, 90);
+    gfx_draw_image(s, px - PADDLE_W / 2, PADDLE_Y, &im_paddle, 255);
+
+    int bx = SUB_PX(game.ball_x), by = SUB_PX(game.ball_y);
+    if (game.launch && !paused) {
+        for (int i = 0; i < trail_n; i++)
+            gfx_circle(s, trail_x[i], trail_y[i], 1 + i * BALL_HALF / TRAIL, 0x7FC8FF, 30 + i * 22);
+        if (trail_n == TRAIL) {
+            for (int i = 1; i < TRAIL; i++) {
+                trail_x[i - 1] = trail_x[i];
+                trail_y[i - 1] = trail_y[i];
+            }
+            trail_n--;
+        }
+        trail_x[trail_n] = bx;
+        trail_y[trail_n] = by;
+        trail_n++;
+    } else {
+        trail_n = 0;
+    }
+    gfx_circle(s, bx, by, BALL_HALF + 3, 0x7FC8FF, 50);
+    gfx_draw_image(s, bx - im_ball.w / 2, by - im_ball.h / 2, &im_ball, 255);
+}
+
+static void draw(void)
+{
+    gfx_surface *s = &ui.surf;
+    char b[40];
+    gfx_fill(s, gfx_r(0, 0, UI_W, UI_H), 0x0B1220);
+    ui_draw_navbar(s, "Breakout", NULL, NULL, 0);
+
+    if (art) {
+        draw_art_field(s);
+    } else {
+        /* the walls the ball bounces off, then the field contents; the HUD row
+         * (y 33..47) sits clear above FIELD_T, and is drawn last anyway */
+        gfx_fill(s, gfx_r(FIELD_L - 3, FIELD_T - 3, 3, FIELD_BOTTOM - FIELD_T + 6), 0x1E3050);
+        gfx_fill(s, gfx_r(FIELD_R, FIELD_T - 3, 3, FIELD_BOTTOM - FIELD_T + 6), 0x1E3050);
+        gfx_fill(s, gfx_r(FIELD_L - 3, FIELD_T - 3, FIELD_R - FIELD_L + 6, 3), 0x1E3050);
+
+        /* bricks */
+        for (int r = 0; r < BRICK_ROWS; r++)
+            for (int c = 0; c < BRICK_COLS; c++) {
+                uint8_t hp = game.bricks[r][c];
+                if (!hp)
+                    continue;
+                int x, y;
+                game_brick_rect(r, c, &x, &y);
+                uint32_t col = hp == STEEL ? 0x6E7A8C : (hp > 1 ? 0xD08341 : 0x4C8FD6);
+                gfx_fill(s, gfx_r(x, y, BRICK_W, BRICK_H), col);
+            }
+
+        /* paddle and ball */
+        int px = SUB_PX(game.paddle_x);
+        gfx_round_rect(s, gfx_r(px - PADDLE_W / 2, PADDLE_Y, PADDLE_W, PADDLE_H), 3, 0xE8EEF7, 255);
+        gfx_circle(s, SUB_PX(game.ball_x), SUB_PX(game.ball_y), BALL_HALF, 0xF2F5FA, 255);
+    }
 
     if (!game.launch && !game.over && !paused)
         gfx_text_center(s, 0, 252, UI_W, ui_font(FONT_R11), "OK or tap to launch", 0x8FA6C4, 255);
@@ -66,7 +149,10 @@ static void draw(void)
     snprintf(b, sizeof(b), "Level %u", game.level);
     gfx_text_center(s, 80, 33, 80, ui_font(FONT_B12), b, 0xE5ECF5, 255);
     for (int i = 0; i < MAX_LIVES; i++)
-        gfx_circle(s, 200 + i * 12, 38, 4, i < game.lives ? 0xF2C94C : 0x27384F, 255);
+        if (art && i < game.lives)
+            gfx_draw_image(s, 196 + i * 12, 34, &im_ball, 255);
+        else
+            gfx_circle(s, 200 + i * 12, 38, 4, i < game.lives ? 0xF2C94C : 0x27384F, 255);
 
     if (paused || game.over) {
         gfx_fill_alpha(s, gfx_r(0, UI_NAV_H, UI_W, UI_H - UI_NAV_H), 0x000000, 185);
@@ -221,6 +307,7 @@ static void report(int ev)
 int main(void)
 {
     ui_init(SB_STATUS_GRAY);
+    load_art();
     snprintf(path, sizeof(path), "%s/data", res_bundle());
     fs_mkdirs(path);
     snprintf(path, sizeof(path), "%s/data/state", res_bundle());

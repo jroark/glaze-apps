@@ -189,6 +189,59 @@ static int menu_touch(const struct gz_input_event *e)
 
 /* ---------- board drawing ---------- */
 
+/* Sprites from res/ (art/draw_art.py); without them flat shapes stand in. */
+static bool art;
+static gfx_image im_board, im_peg_red, im_peg_black, im_felt;
+static void load_art(void)
+{
+    art = res_image(&im_board, "board.gzi") && res_image(&im_peg_red, "peg_red.gzi")
+       && res_image(&im_peg_black, "peg_black.gzi") && res_image(&im_felt, "felt.gzi");
+}
+
+/* A link as a shaded rod: dark outline, body, then a thin highlight. */
+static void draw_rod_aa(int x0, int y0, int x1, int y1, bool red)
+{
+    gfx_surface *s = &ui.surf;
+    gfx_line_aa(s, x0 * 16 + 16, y0 * 16 + 24, x1 * 16 + 16, y1 * 16 + 24, 72, 0x000000, 70);
+    gfx_line_aa(s, x0 * 16, y0 * 16, x1 * 16, y1 * 16, 64, red ? 0x7A1A14 : 0x0C0E14, 255);
+    gfx_line_aa(s, x0 * 16, y0 * 16, x1 * 16, y1 * 16, 40, red ? 0xD4483A : 0x3A4050, 255);
+    gfx_line_aa(s, x0 * 16 - 8, y0 * 16 - 8, x1 * 16 - 8, y1 * 16 - 8, 14, red ? 0xFFA090 : 0x9AA4BC, 200);
+}
+
+static void draw_board_art(void)
+{
+    gfx_surface *s = &ui.surf;
+    int la[TW_MAX_LINKS], lb[TW_MAX_LINKS];
+    int bx = OX - 8, by = OY - 8, bw = 12 * PITCH + 16;
+    /* home-edge bands: red top/bottom, black left/right */
+    gfx_round_rect_vgradient(s, gfx_r(bx + 6, by - 5, bw - 12, 4), 2, 0xF06A5A, 0x9A2E24, 255);
+    gfx_round_rect_vgradient(s, gfx_r(bx + 6, by + bw + 1, bw - 12, 4), 2, 0xF06A5A, 0x9A2E24, 255);
+    gfx_round_rect(s, gfx_r(bx - 5, by + 6, 4, bw - 12), 2, 0x20242E, 255);
+    gfx_round_rect(s, gfx_r(bx + bw + 1, by + 6, 4, bw - 12), 2, 0x20242E, 255);
+    gfx_round_rect(s, gfx_r(bx + 2, by + 2, bw, bw), 7, 0x000000, 55);   /* drop shadow */
+    gfx_draw_image(s, bx, by, &im_board, 255);
+    for (int i = 0; i < tw_get_links(la, lb, 2 * TW_NPOS); i++)
+        draw_rod_aa(dot_x(la[i]), dot_y(la[i]), dot_x(lb[i]), dot_y(lb[i]), tw_who_at(la[i]) == TW_RED);
+    for (int pos = 0; pos < TW_NPOS; pos++) {
+        int x = dot_x(pos), y = dot_y(pos), who = tw_who_at(pos);
+        if (pos == last_pos)
+            gfx_circle(s, x, y, 8, 0xFFE08A, who == TW_EMPTY ? 120 : 170);
+        if (who != TW_EMPTY) {
+            const gfx_image *im = who == TW_RED ? &im_peg_red : &im_peg_black;
+            gfx_draw_image(s, x - im->w / 2, y - im->h / 2, im, 255);
+        }
+        if (pos == cursor && !paused && tw_result() == TW_ONGOING) {
+            gfx_circle(s, x, y, 8, 0xFFFFFF, 70);
+            for (int k = 0; k < 4; k++) {     /* corner brackets */
+                int sx = k & 1 ? 1 : -1, sy = k & 2 ? 1 : -1;
+                int cx = (x + 7 * sx) * 16, cy = (y + 7 * sy) * 16;
+                gfx_line_aa(s, cx, cy, cx - 4 * 16 * sx, cy, 24, 0xFFFFFF, 255);
+                gfx_line_aa(s, cx, cy, cx, cy - 4 * 16 * sy, 24, 0xFFFFFF, 255);
+            }
+        }
+    }
+}
+
 static void draw_rod(int x0, int y0, int x1, int y1, uint32_t rgb)
 {
     gfx_surface *s = &ui.surf;
@@ -220,6 +273,10 @@ static void draw(void)
     int i, pos, x, y;
 
     gfx_fill(s, gfx_r(0, 0, UI_W, UI_H), 0x101B2B);
+    if (art)
+        for (y = 30; y < UI_H; y += im_felt.h)
+            for (x = 0; x < UI_W; x += im_felt.w)
+                gfx_draw_image(s, x, y, &im_felt, 255);
     ui_draw_navbar(s, "TwixT", NULL, NULL, 0);
 
     text(12, 35, thinking ? "Computer thinking..."
@@ -228,54 +285,58 @@ static void draw(void)
                                                            : "Computer's turn")
                                  : "Game over"));
 
-    /* home-edge bands: red top/bottom, dark left/right */
-    gfx_fill(s, gfx_r(OX - 8, OY - 13, 12 * PITCH + 16, 5), 0xB84A40);
-    gfx_fill(s, gfx_r(OX - 8, OY + 11 * PITCH + 8, 12 * PITCH + 16, 5), 0xB84A40);
-    gfx_fill(s, gfx_r(OX - 13, OY - 8, 5, 12 * PITCH + 16), 0x22324A);
-    gfx_fill(s, gfx_r(OX + 11 * PITCH + 8, OY - 8, 5, 12 * PITCH + 16), 0x22324A);
+    if (art) {
+        draw_board_art();
+    } else {
+        /* home-edge bands: red top/bottom, dark left/right */
+        gfx_fill(s, gfx_r(OX - 8, OY - 13, 12 * PITCH + 16, 5), 0xB84A40);
+        gfx_fill(s, gfx_r(OX - 8, OY + 11 * PITCH + 8, 12 * PITCH + 16, 5), 0xB84A40);
+        gfx_fill(s, gfx_r(OX - 13, OY - 8, 5, 12 * PITCH + 16), 0x22324A);
+        gfx_fill(s, gfx_r(OX + 11 * PITCH + 8, OY - 8, 5, 12 * PITCH + 16), 0x22324A);
 
-    /* board panel with the four dead corner holes notched out */
-    gfx_fill(s, gfx_r(OX - 8, OY - 8, 12 * PITCH + 16, 12 * PITCH + 16), 0x3A5170);
-    gfx_fill(s, gfx_r(OX - 8, OY - 8, 16, 16), 0x101B2B);
-    gfx_fill(s, gfx_r(OX + 11 * PITCH, OY - 8, 16, 16), 0x101B2B);
-    gfx_fill(s, gfx_r(OX - 8, OY + 11 * PITCH, 16, 16), 0x101B2B);
-    gfx_fill(s, gfx_r(OX + 11 * PITCH, OY + 11 * PITCH, 16, 16), 0x101B2B);
+        /* board panel with the four dead corner holes notched out */
+        gfx_fill(s, gfx_r(OX - 8, OY - 8, 12 * PITCH + 16, 12 * PITCH + 16), 0x3A5170);
+        gfx_fill(s, gfx_r(OX - 8, OY - 8, 16, 16), 0x101B2B);
+        gfx_fill(s, gfx_r(OX + 11 * PITCH, OY - 8, 16, 16), 0x101B2B);
+        gfx_fill(s, gfx_r(OX - 8, OY + 11 * PITCH, 16, 16), 0x101B2B);
+        gfx_fill(s, gfx_r(OX + 11 * PITCH, OY + 11 * PITCH, 16, 16), 0x101B2B);
 
-    /* rods first, pegs sit on top of their ends */
-    for (i = 0; i < tw_get_links(la, lb, 2 * TW_NPOS); i++) {
-        int color = tw_who_at(la[i]);
-        draw_rod(dot_x(la[i]), dot_y(la[i]), dot_x(lb[i]), dot_y(lb[i]),
-                 color == TW_RED ? 0xD25446 : 0x93A6C0);
-    }
-
-    for (pos = 0; pos < TW_NPOS; pos++) {
-        x = dot_x(pos);
-        y = dot_y(pos);
-        int who_at = tw_who_at(pos);
-        int r = pos / TW_DIM, c = pos % TW_DIM;
-
-        if ((r == 0 || r == TW_DIM - 1) && (c == 0 || c == TW_DIM - 1))
-            continue; /* corner holes stay blank notches */
-        if (who_at == TW_EMPTY) {
-            gfx_circle(s, x, y, 2, 0x9DB4D2, 255);
-            if (pos == last_pos)
-                gfx_circle(s, x, y, 5, 0xE8C86A, 255);
-        } else if (who_at == TW_RED) {
-            if (pos == last_pos)
-                gfx_circle(s, x, y, 6, 0xE8C86A, 255);
-            gfx_circle(s, x, y, 5, 0xC8503F, 255);
-            gfx_circle(s, x, y, 2, 0xEF9A8B, 255);
-        } else {
-            if (pos == last_pos)
-                gfx_circle(s, x, y, 6, 0xE8C86A, 255);
-            gfx_circle(s, x, y, 5, 0x93A6C0, 255);
-            gfx_circle(s, x, y, 4, 0x18222F, 255);
+        /* rods first, pegs sit on top of their ends */
+        for (i = 0; i < tw_get_links(la, lb, 2 * TW_NPOS); i++) {
+            int color = tw_who_at(la[i]);
+            draw_rod(dot_x(la[i]), dot_y(la[i]), dot_x(lb[i]), dot_y(lb[i]),
+                     color == TW_RED ? 0xD25446 : 0x93A6C0);
         }
-        if (pos == cursor && !paused && tw_result() == TW_ONGOING) {
-            gfx_fill(s, gfx_r(x - 7, y - 7, 14, 2), 0xDCE7F5);
-            gfx_fill(s, gfx_r(x - 7, y + 5, 14, 2), 0xDCE7F5);
-            gfx_fill(s, gfx_r(x - 7, y - 5, 2, 10), 0xDCE7F5);
-            gfx_fill(s, gfx_r(x + 5, y - 5, 2, 10), 0xDCE7F5);
+
+        for (pos = 0; pos < TW_NPOS; pos++) {
+            x = dot_x(pos);
+            y = dot_y(pos);
+            int who_at = tw_who_at(pos);
+            int r = pos / TW_DIM, c = pos % TW_DIM;
+
+            if ((r == 0 || r == TW_DIM - 1) && (c == 0 || c == TW_DIM - 1))
+                continue; /* corner holes stay blank notches */
+            if (who_at == TW_EMPTY) {
+                gfx_circle(s, x, y, 2, 0x9DB4D2, 255);
+                if (pos == last_pos)
+                    gfx_circle(s, x, y, 5, 0xE8C86A, 255);
+            } else if (who_at == TW_RED) {
+                if (pos == last_pos)
+                    gfx_circle(s, x, y, 6, 0xE8C86A, 255);
+                gfx_circle(s, x, y, 5, 0xC8503F, 255);
+                gfx_circle(s, x, y, 2, 0xEF9A8B, 255);
+            } else {
+                if (pos == last_pos)
+                    gfx_circle(s, x, y, 6, 0xE8C86A, 255);
+                gfx_circle(s, x, y, 5, 0x93A6C0, 255);
+                gfx_circle(s, x, y, 4, 0x18222F, 255);
+            }
+            if (pos == cursor && !paused && tw_result() == TW_ONGOING) {
+                gfx_fill(s, gfx_r(x - 7, y - 7, 14, 2), 0xDCE7F5);
+                gfx_fill(s, gfx_r(x - 7, y + 5, 14, 2), 0xDCE7F5);
+                gfx_fill(s, gfx_r(x - 7, y - 5, 2, 10), 0xDCE7F5);
+                gfx_fill(s, gfx_r(x + 5, y - 5, 2, 10), 0xDCE7F5);
+            }
         }
     }
 
@@ -385,6 +446,7 @@ static void computer_move(void)
 int main(void)
 {
     ui_init(SB_STATUS_GRAY);
+    load_art();
     snprintf(path, sizeof path, "%s/data", res_bundle());
     fs_mkdirs(path);
     snprintf(path, sizeof path, "%s/data/state", res_bundle());

@@ -39,3 +39,10 @@ FS_FROM=out/shots/t_tetris/glaze.bin NO_BUILD=1 tests/run.sh tests/ui/t_tetris_r
 
 The resume run launches the installed package from the previous filesystem,
 resumes the saved board, rotates and drops a piece, then opens the pause menu.
+
+## Art
+
+`res/` and `icon.gzi` are drawn for this game by `art/draw_art.py`: bevelled blocks in the seven piece colours, a ghost outline tinted with the falling piece's colour, and the well's backdrop.
+It needs Pillow and the shared helpers in `tools/gzart.py`; re-run it after
+editing (`--sheet out.png` writes a contact sheet). The GZIs are committed.
+Without `res/` the game draws its original flat shapes.

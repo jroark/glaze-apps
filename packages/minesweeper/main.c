@@ -289,6 +289,42 @@ static int cell_at(int x, int y)
     return y / lv->cell * lv->w + x / lv->cell;
 }
 
+/* Sprites from res/ (art/draw_art.py), per cell size: [0] 26 px, [1] 15 px.
+ * Without them the classic flat shapes stand in. */
+enum { F_SMILE, F_WOW, F_DEAD, F_COOL };
+static bool art;
+static gfx_image im_tile[2][2], im_open[2], im_boom[2], im_mine[2], im_flag[2], im_face[4];
+static void load_art(void)
+{
+    static const int sizes[2] = { 26, 15 };
+    static const char *const faces[4] = { "smile", "wow", "dead", "cool" };
+    char n[24];
+    art = true;
+    for (int k = 0; art && k < 2; k++) {
+        snprintf(n, sizeof(n), "tile_a%d.gzi", sizes[k]);
+        art = res_image(&im_tile[k][0], n);
+        snprintf(n, sizeof(n), "tile_b%d.gzi", sizes[k]);
+        art = art && res_image(&im_tile[k][1], n);
+        snprintf(n, sizeof(n), "open%d.gzi", sizes[k]);
+        art = art && res_image(&im_open[k], n);
+        snprintf(n, sizeof(n), "boom%d.gzi", sizes[k]);
+        art = art && res_image(&im_boom[k], n);
+        snprintf(n, sizeof(n), "mine%d.gzi", sizes[k]);
+        art = art && res_image(&im_mine[k], n);
+        snprintf(n, sizeof(n), "flag%d.gzi", sizes[k]);
+        art = art && res_image(&im_flag[k], n);
+    }
+    for (int k = 0; art && k < 4; k++) {
+        snprintf(n, sizeof(n), "face_%s.gzi", faces[k]);
+        art = res_image(&im_face[k], n);
+    }
+}
+
+static void centred(gfx_surface *s, const gfx_image *im, int cx, int cy)
+{
+    gfx_draw_image(s, cx - im->w / 2, cy - im->h / 2, im, 255);
+}
+
 static void draw_mine(gfx_surface *s, int cx, int cy, int r)
 {
     gfx_line(s, cx - r - 2, cy, cx + r + 2, cy, 0x000000, 255);
@@ -321,6 +357,37 @@ static void draw_cell(gfx_surface *s, int i)
     uint8_t c = st.cell[i];
     int cx = r.x + r.w / 2, cy = r.y + r.h / 2;
     bool down = pressed == P_CELL && press_cell == i && !hold_done && !(c & (C_OPEN | C_FLAG)) && !st.flag_mode;
+
+    if (art) {
+        int k = lv->cell >= 20 ? 0 : 1;
+        if (c & C_OPEN || down) {
+            gfx_draw_image(s, r.x, r.y, c & C_BOOM ? &im_boom[k] : &im_open[k], 255);
+            if (down)
+                return;
+            if (c & C_MINE) {
+                centred(s, &im_mine[k], cx, cy);
+                return;
+            }
+            int n = count_around(i, C_MINE);
+            if (n) {
+                char t[2] = { (char)('0' + n), 0 };
+                const gfx_font *f = ui_font(k ? FONT_B11 : FONT_B17);
+                int ty = cy - f->line_height / 2;
+                gfx_text_center(s, r.x, ty + 1, r.w, f, t, 0xFFFFFF, 150);
+                gfx_text_center(s, r.x, ty, r.w, f, t, num_rgb[n], 255);
+            }
+            return;
+        }
+        gfx_draw_image(s, r.x, r.y, &im_tile[k][(i % lv->w + i / lv->w) & 1], 255);
+        if (c & C_FLAG) {
+            centred(s, &im_flag[k], cx, cy);
+            if (st.status == G_LOST && !(c & C_MINE)) {
+                gfx_line_aa(s, (r.x + 3) * 16, (r.y + 3) * 16, (r.x + r.w - 4) * 16, (r.y + r.h - 4) * 16, 32, 0xE01010, 255);
+                gfx_line_aa(s, (r.x + 3) * 16, (r.y + r.h - 4) * 16, (r.x + r.w - 4) * 16, (r.y + 3) * 16, 32, 0xE01010, 255);
+            }
+        }
+        return;
+    }
 
     if (c & C_OPEN || down) {
         gfx_fill(s, r, c & C_BOOM ? 0xE02020 : 0xC6C6C6);
@@ -375,6 +442,12 @@ static void draw_face(gfx_surface *s)
 
     gfx_round_rect_vgradient(s, r, 5, pressed == P_FACE ? 0x9AA4B4 : 0xE4E8EE, pressed == P_FACE ? 0x7A8494 : 0xB4BCC8,
                              255);
+    if (art) {
+        int f = st.status == G_LOST ? F_DEAD : st.status == G_WON ? F_COOL
+              : pressed == P_CELL && !hold_done ? F_WOW : F_SMILE;
+        centred(s, &im_face[f], cx, cy);
+        return;
+    }
     gfx_circle(s, cx, cy, 11, 0x000000, 255);
     gfx_circle(s, cx, cy, 10, 0xFFD820, 255);
     if (st.status == G_LOST) {
@@ -420,7 +493,9 @@ static void draw_strip(gfx_surface *s)
     mode_rect = gfx_r(62, STRIP_Y + 3, 40, 26);
     gfx_round_rect_vgradient(s, mode_rect, 5, st.flag_mode ? 0x5E95F2 : 0xE4E8EE, st.flag_mode ? 0x2A63D4 : 0xB4BCC8,
                              pressed == P_MODE ? 160 : 255);
-    if (st.flag_mode)
+    if (art)
+        centred(s, st.flag_mode ? &im_flag[0] : &im_mine[1], mode_rect.x + 20, mode_rect.y + 13);
+    else if (st.flag_mode)
         draw_flag(s, mode_rect.x + 21, mode_rect.y + 5, 16);
     else
         draw_mine(s, mode_rect.x + 20, mode_rect.y + 13, 5);
@@ -436,7 +511,14 @@ static void draw(void)
     ui_draw_navbar(s, "Minesweeper", NULL, NULL, 0);
     level_rect = ui_draw_bar_button(s, "Level", true, pressed == P_LEVEL, false, 0);
     draw_strip(s);
-    gfx_fill(s, gfx_r(0, BOARD_Y, UI_W, UI_H - BOARD_Y), 0x7B8796);
+    if (art) {
+        gfx_vgradient(s, gfx_r(0, BOARD_Y, UI_W, UI_H - BOARD_Y), 0x2A3446, 0x161C28, 255);
+        gfx_rect b = cell_rect(0);
+        int bw = lv->w * lv->cell, bh = lv->h * lv->cell;
+        gfx_round_rect(s, gfx_r(b.x - 3, b.y - 3, bw + 6, bh + 6), 4, 0x0C1018, 200);
+    } else {
+        gfx_fill(s, gfx_r(0, BOARD_Y, UI_W, UI_H - BOARD_Y), 0x7B8796);
+    }
     for (int i = 0; i < lv->w * lv->h; i++)
         draw_cell(s, i);
     if (alert_open)
@@ -537,6 +619,7 @@ int main(void)
     uint32_t shown_secs = 0;
 
     ui_init(SB_STATUS_GRAY);
+    load_art();
     rng = (uint32_t)gz_time_us() | 1;
     load();
     draw();

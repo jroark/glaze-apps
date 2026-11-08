@@ -24,3 +24,10 @@ temporary file. An invalid save starts a fresh game.
 
 Tests: `make -C tests breakout-test` (rules, physics and saves, ASan/UBSan).
 For the emulator: `.claude/skills/glaze-ui-test/scripts/ui_test.sh breakout`.
+
+## Art
+
+`res/` and `icon.gzi` are drawn for this game by `art/draw_art.py`: glossy bricks (a colour per row), gold two-hit bricks, riveted steel, a chrome paddle, the ball and the backdrop tile.
+It needs Pillow and the shared helpers in `tools/gzart.py`; re-run it after
+editing (`--sheet out.png` writes a contact sheet). The GZIs are committed.
+Without `res/` the game draws its original flat shapes.

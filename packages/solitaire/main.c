@@ -315,6 +315,27 @@ static const char *const rank_names[13] = {
     "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K",
 };
 
+/* Sprites from res/ (art/draw_art.py); cards are composed from them. Without
+ * them the bitmap pips and flat cards stand in. */
+static bool art;
+static gfx_image im_card, im_back, im_pip[4], im_suit[4], im_court[3][2], im_felt;
+static void load_art(void)
+{
+    char n[20];
+    art = res_image(&im_card, "card.gzi") && res_image(&im_back, "back.gzi") && res_image(&im_felt, "felt.gzi");
+    for (int k = 0; art && k < 4; k++) {
+        snprintf(n, sizeof(n), "pip%d.gzi", k);
+        art = res_image(&im_pip[k], n);
+        snprintf(n, sizeof(n), "suit%d.gzi", k);
+        art = art && res_image(&im_suit[k], n);
+    }
+    for (int k = 0; art && k < 3; k++)
+        for (int r = 0; art && r < 2; r++) {
+            snprintf(n, sizeof(n), "court_%c_%c.gzi", "jqk"[k], r ? 'r' : 'b');
+            art = res_image(&im_court[k][r], n);
+        }
+}
+
 static void draw_suit(gfx_surface *s, int x, int y, int suit, int scale, uint32_t rgb)
 {
     for (int r = 0; r < 7; r++)
@@ -325,6 +346,10 @@ static void draw_suit(gfx_surface *s, int x, int y, int suit, int scale, uint32_
 
 static void draw_back(gfx_surface *s, int x, int y)
 {
+    if (art) {
+        gfx_draw_image(s, x, y, &im_back, 255);
+        return;
+    }
     gfx_rect in = gfx_r(x + 2, y + 2, CW - 4, CH - 4);
 
     gfx_round_rect(s, gfx_r(x, y, CW, CH), 3, 0x404040, 255);
@@ -348,6 +373,21 @@ static void draw_card(gfx_surface *s, int x, int y, uint8_t c)
     uint32_t ink = RED(c) ? 0xD01818 : 0x101010;
     int rank = RANK(c);
 
+    if (art) {
+        gfx_draw_image(s, x, y, &im_card, 255);
+        gfx_text(s, x + 2, y + 1, f, rank_names[rank], ink, 255);
+        gfx_draw_image(s, x + CW - 10, y + 3, &im_pip[SUIT(c)], 255);
+        if (rank >= 10) {
+            const gfx_image *im = &im_court[rank - 10][RED(c) ? 1 : 0];
+            const gfx_font *bf = ui_font(FONT_B12);
+            gfx_draw_image(s, x + 5, y + 15, im, 255);
+            gfx_text_center(s, x + 5, y + 15 + 12, im->w, bf, rank_names[rank], ink, 255);
+        } else {
+            gfx_draw_image(s, x + (CW - im_suit[0].w) / 2, y + 20, &im_suit[SUIT(c)], 255);
+        }
+        return;
+    }
+
     gfx_round_rect(s, gfx_r(x, y, CW, CH), 3, 0x404040, 255);
     gfx_round_rect(s, gfx_r(x + 1, y + 1, CW - 2, CH - 2), 2, 0xFFFFFF, 255);
     gfx_text(s, x + 2, y + 1, f, rank_names[rank], ink, 255);
@@ -365,6 +405,12 @@ static void draw_card(gfx_surface *s, int x, int y, uint8_t c)
 
 static void draw_slot(gfx_surface *s, int x, int y)
 {
+    if (art) {                  /* an empty place: a soft inset outline */
+        gfx_round_rect(s, gfx_r(x, y, CW, CH), 3, 0x000000, 50);
+        gfx_round_rect(s, gfx_r(x + 1, y + 1, CW - 2, CH - 2), 2, 0x3A9A5A, 120);
+        gfx_round_rect(s, gfx_r(x + 2, y + 2, CW - 4, CH - 4), 2, 0x1E6E36, 200);
+        return;
+    }
     gfx_round_rect(s, gfx_r(x, y, CW, CH), 3, 0x000000, 60);
     gfx_round_rect(s, gfx_r(x + 1, y + 1, CW - 2, CH - 2), 2, FELT_TOP, 200);
 }
@@ -414,7 +460,14 @@ static void card_xy(int p, int i, int *x, int *y)
 /* The table, leaving out the top `hide` cards of pile `hide_pile`. */
 static void draw_table(gfx_surface *s, int hide_pile, int hide)
 {
-    gfx_vgradient(s, gfx_r(0, UI_NAV_H, UI_W, UI_H - UI_NAV_H), FELT_TOP, FELT_BOTTOM, 255);
+    if (art) {
+        for (int y = UI_NAV_H; y < UI_H; y += im_felt.h)
+            for (int x = 0; x < UI_W; x += im_felt.w)
+                gfx_draw_image(s, x, y, &im_felt, 255);
+        gfx_fill_alpha(s, gfx_r(0, UI_NAV_H, UI_W, 3), 0x000000, 60);     /* the bar's shadow */
+    } else {
+        gfx_vgradient(s, gfx_r(0, UI_NAV_H, UI_W, UI_H - UI_NAV_H), FELT_TOP, FELT_BOTTOM, 255);
+    }
     ui_draw_navbar(s, "Solitaire", NULL, NULL, 0);
     new_rect = ui_draw_bar_button(s, "New", false, touch_kind == T_NEW, false, 0);
     undo_rect = ui_draw_bar_button(s, "Undo", true, touch_kind == T_UNDO, false, 0);
@@ -441,13 +494,16 @@ static void draw_table(gfx_surface *s, int hide_pile, int hide)
     }
 }
 
+/* The run being dragged, plus the shadow it casts. */
 static gfx_rect drag_rect(void)
 {
-    return gfx_r(drag_x, drag_y, CW, CH + (drag_count - 1) * UP_OFF);
+    return gfx_r(drag_x, drag_y, CW + 4, CH + (drag_count - 1) * UP_OFF + 5);
 }
 
 static void draw_dragged(gfx_surface *s)
 {
+    if (art)                    /* lifted: a soft shadow under the run */
+        gfx_round_rect(s, gfx_r(drag_x + 3, drag_y + 4, CW, CH + (drag_count - 1) * UP_OFF), 4, 0x000000, 70);
     for (int i = 0; i < drag_count; i++)
         draw_card(s, drag_x, drag_y + i * UP_OFF, st.card[drag_pile][st.n[drag_pile] - drag_count + i]);
 }
@@ -692,6 +748,7 @@ static void touch(const struct gz_input_event *e)
 int main(void)
 {
     ui_init(SB_STATUS_GRAY);
+    load_art();
     rng = (uint32_t)gz_time_us() | 1;
     load();
     draw();

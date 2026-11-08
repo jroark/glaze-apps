@@ -65,3 +65,10 @@ The resume run launches the installed package from the previous filesystem,
 decodes the saved mid-game history onto a fresh board, resumes, plays two
 more pegs on row 0 (forbidden ground for Black, so the script never races
 the AI's replies), then opens the pause menu.
+
+## Art
+
+`res/` and `icon.gzi` are drawn for this game by `art/draw_art.py`: a wooden pegboard, shaded red and black pegs, and a felt backdrop; links are drawn as anti-aliased rods.
+It needs Pillow and the shared helpers in `tools/gzart.py`; re-run it after
+editing (`--sheet out.png` writes a contact sheet). The GZIs are committed.
+Without `res/` the game draws its original flat shapes.

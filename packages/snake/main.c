@@ -21,6 +21,40 @@ static void block(int x,int y,int outer,int inner)
     gfx_fill(&ui.surf,gfx_r(x+1,y+1,8,8),inner);
 }
 static void text(int x,int y,const char *s){gfx_text(&ui.surf,x,y,ui_font(FONT_B14),s,0xE5ECF5,255);}
+/* Sprites from res/ (art/draw_art.py); without them the flat blocks stand in. */
+static bool art;
+static gfx_image im_lawn,im_body[2],im_tail,im_joint_h,im_joint_v,im_head[4],im_apple;
+static void load_art(void)
+{
+    art=res_image(&im_lawn,"lawn.gzi")&&res_image(&im_body[0],"body0.gzi")&&res_image(&im_body[1],"body1.gzi")
+      &&res_image(&im_tail,"tail.gzi")&&res_image(&im_joint_h,"joint_h.gzi")&&res_image(&im_joint_v,"joint_v.gzi")
+      &&res_image(&im_head[0],"head_u.gzi")&&res_image(&im_head[1],"head_r.gzi")
+      &&res_image(&im_head[2],"head_d.gzi")&&res_image(&im_head[3],"head_l.gzi")&&res_image(&im_apple,"apple.gzi");
+}
+static void sprite(const gfx_image *im,int cx,int cy){gfx_draw_image(&ui.surf,cx-im->w/2,cy-im->h/2,im,255);}
+static int seg(int i){return game.body[(game.head-i+SNAKE_MAX)%SNAKE_MAX];}
+/* The snake as a shaded tube: a soft shadow, joints between neighbouring
+ * cells, striped segments, a tapered tail and a head that looks ahead. */
+static void draw_snake(gfx_surface *s)
+{
+    for(int i=game.len-1;i>=0;i--){
+        int c=seg(i);
+        gfx_circle(s,15+(c%SW)*10+1,59+(c/SW)*10+2,5,0x000000,55);
+    }
+    for(int i=game.len-1;i>0;i--){
+        int a=seg(i),b=seg(i-1);
+        int ax=a%SW,ay=a/SW,bx=b%SW,by=b/SW;
+        int mx=15+ax*10+(bx-ax)*5,my=59+ay*10+(by-ay)*5;
+        if(ay==by&&(ax-bx==1||bx-ax==1))sprite(&im_joint_h,mx,my);
+        else if(ax==bx&&(ay-by==1||by-ay==1))sprite(&im_joint_v,mx,my);
+    }
+    for(int i=game.len-1;i>0;i--){
+        int c=seg(i);
+        sprite(i==game.len-1&&game.len>2?&im_tail:&im_body[(i/2)&1],15+(c%SW)*10,59+(c/SW)*10);
+    }
+    int h=seg(0);
+    sprite(&im_head[game.dir&3],15+(h%SW)*10,59+(h/SW)*10);
+}
 static void draw(void)
 {
     gfx_surface *s=&ui.surf;
@@ -29,18 +63,32 @@ static void draw(void)
     char b[32];
     snprintf(b,sizeof(b),"Score %u",game.score);text(12,35,b);
     snprintf(b,sizeof(b),"Best %u",game.best);gfx_text_center(s,128,35,100,ui_font(FONT_B14),b,0xE5ECF5,255);
-    gfx_fill(s,gfx_r(9,53,222,202),0x40536D);
-    gfx_fill(s,gfx_r(10,54,SW*10,SH*10),0x182539);
-    if(game.food<SNAKE_MAX){
-        int fx=10+(game.food%SW)*10,fy=54+(game.food/SW)*10;
-        block(fx,fy,0x8F2F2C,0xF07482);
-        gfx_fill_alpha(s,gfx_r(fx+2,fy+2,4,2),0xFFFFFF,90);
-    }
-    for(int i=game.len-1;i>=0;i--){
-        int c=game.body[(game.head-i+SNAKE_MAX)%SNAKE_MAX];
-        bool headcell=i==0;
-        block(10+(c%SW)*10,54+(c/SW)*10,headcell?0x3C8F46:0x1E6F34,headcell?0xA6E87B:0x57B45E);
-        if(headcell)gfx_fill_alpha(s,gfx_r(11+(c%SW)*10,55+(c/SW)*10,8,3),0xFFFFFF,70);
+    gfx_round_rect_vgradient(s,gfx_r(6,50,228,208),6,0x5A4630,0x3A2C1C,255);   /* wooden frame */
+    gfx_fill(s,gfx_r(9,53,222,202),0x1C140C);
+    if(art){
+        gfx_set_clip(s,gfx_r(10,54,SW*10,SH*10));
+        for(int y=0;y<SH*10;y+=20)for(int x=0;x<SW*10;x+=20)gfx_draw_image(s,10+x,54+y,&im_lawn,255);
+        gfx_reset_clip(s);
+        if(game.food<SNAKE_MAX){
+            int fx=15+(game.food%SW)*10,fy=59+(game.food/SW)*10;
+            unsigned t=gz_time_ms()/120;
+            gfx_circle(s,fx,fy,7,0xFFE08A,(int)(t%6)*8+20);    /* a soft pulse to find it */
+            sprite(&im_apple,fx,fy);
+        }
+        if(game.len>0)draw_snake(s);
+    }else{
+        gfx_fill(s,gfx_r(10,54,SW*10,SH*10),0x182539);
+        if(game.food<SNAKE_MAX){
+            int fx=10+(game.food%SW)*10,fy=54+(game.food/SW)*10;
+            block(fx,fy,0x8F2F2C,0xF07482);
+            gfx_fill_alpha(s,gfx_r(fx+2,fy+2,4,2),0xFFFFFF,90);
+        }
+        for(int i=game.len-1;i>=0;i--){
+            int c=game.body[(game.head-i+SNAKE_MAX)%SNAKE_MAX];
+            bool headcell=i==0;
+            block(10+(c%SW)*10,54+(c/SW)*10,headcell?0x3C8F46:0x1E6F34,headcell?0xA6E87B:0x57B45E);
+            if(headcell)gfx_fill_alpha(s,gfx_r(11+(c%SW)*10,55+(c/SW)*10,8,3),0xFFFFFF,70);
+        }
     }
     gfx_text_center(s,0,262,240,ui_font(FONT_B12),"Arrows steer the snake   ESC pauses",0xA6BAD2,255);
     gfx_text_center(s,0,280,240,ui_font(FONT_B12),"Rocket saves and suspends",0xA6BAD2,255);
@@ -70,6 +118,7 @@ static void restart(void)
 int main(void)
 {
     ui_init(SB_STATUS_GRAY);
+    load_art();
     snprintf(path,sizeof(path),"%s/data",res_bundle());fs_mkdirs(path);
     snprintf(path,sizeof(path),"%s/data/state",res_bundle());
     snprintf(temp,sizeof(temp),"%s/data/state.tmp",res_bundle());

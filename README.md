@@ -33,6 +33,14 @@ Gmail and Chat link the system's `libwolfssl.so.1`. Chat also carries a copy of
 the Browser's HTTP/TLS transport (`packages/chatgpt/http/`), and Doom links the
 pinned engine in `third_party/doomgeneric` through `packages/doom/engine`.
 
+## Art
+
+Games draw their sprites and icons with `packages/<id>/art/draw_art.py`,
+which uses Pillow and the shared helpers in `tools/gzart.py` (GZI writer,
+supersampled shapes, shaded spheres, glows, tileable noise, wood, icon
+tiles). The generated `res/*.gzi` and `icon.gzi` are committed, so building
+needs neither Python nor Pillow; re-run a script after changing it.
+
 ## Testing
 
 ```sh
