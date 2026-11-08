@@ -55,7 +55,8 @@ Copyright notices in the individual files remain in place.
 Everything else Glaze needs is outside the vendored tree, in `packages/vlc/glaze/`:
 `config.h` in place of autoconf's, the compat layer (`compat.h`, `printf.c`,
 `stdio.c`, `libc.c`, `math.c`, `sysinc/`), stubs for the core parts left out
-(stream output, OSD menu files), and the Glaze modules in `glaze/modules/`: the audio
+(stream output, OSD menu files), and the Glaze modules in `glaze/modules/`: the
+interface (`intf_glaze`, on libui, run on the app's main thread), the audio
 output (`aout_glaze`, the audio server's stream mode), the video output
 (`vout_glaze`, the libui surface) and a Motion-JPEG decoder (`codec_mjpeg`, on
 stb_image, since VLC 0.8 decoded MJPEG only through ffmpeg).

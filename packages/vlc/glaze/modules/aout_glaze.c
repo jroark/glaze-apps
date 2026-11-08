@@ -23,6 +23,9 @@
  * multiplier for the float mixer, which this no-FPU build does not have. If the Music
  * player takes the output over (GZ_EBUSY), buffers are dropped in real
  * time so the input neither stalls nor races; the interface pauses then.
+ * The interface also holds the output (aout_glaze.h) while paused or in the
+ * background: the thread closes the stream, so the Music player can have
+ * it, and opens it again when the hold is released.
  */
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +34,7 @@
 #include <vlc/aout.h>
 
 #include "aout_internal.h"
+#include "aout_glaze.h"
 
 #include <glaze/audio.h>
 #include <glaze/sys.h>
@@ -65,8 +69,24 @@ struct aout_sys_t {
     uint32_t played_ms;         /* last stream clock reading */
     mtime_t heard_base;         /* heard time = mdate() - heard_base */
     int16_t *silence;           /* FRAME_SIZE frames of zeros */
+    int channels;
     vlc_bool_t busy;            /* the player took the output */
+    vlc_bool_t closed;          /* the stream is closed (held) */
 };
+
+/* Requests from the interface; one output exists at a time. */
+static volatile int hold_req;
+static volatile int taken;
+
+void aout_glaze_hold(int hold)
+{
+    hold_req = hold;
+}
+
+int aout_glaze_taken(void)
+{
+    return taken;
+}
 
 static int Open(vlc_object_t *p_this)
 {
@@ -99,6 +119,8 @@ static int Open(vlc_object_t *p_this)
     aout_FormatPrepare(fmt);
     p_sys->bytes_per_frame = fmt->i_bytes_per_frame;
     p_sys->rate = fmt->i_rate;
+    p_sys->channels = channels;
+    taken = 0;
     p_sys->silence = calloc(FRAME_SIZE, p_sys->bytes_per_frame);
     if (!p_sys->silence) {
         free(p_sys);
@@ -131,7 +153,8 @@ static void Close(vlc_object_t *p_this)
     p_aout->b_die = VLC_TRUE;
     vlc_thread_join(p_aout);
     p_aout->b_die = VLC_FALSE;
-    audio_stream_close();
+    if (!p_sys->closed)
+        audio_stream_close();
     free(p_sys->silence);
     free(p_sys);
 }
@@ -213,11 +236,29 @@ static void *Thread(void *data)
     struct aout_sys_t *p_sys = p_aout->output.p_sys;
 
     while (!p_aout->b_die) {
-        mtime_t latency = p_sys->busy ? 0 : Latency(p_sys);
+        if (hold_req && !p_sys->closed) {
+            audio_stream_close();
+            p_sys->closed = VLC_TRUE;
+            msg_Dbg(p_aout, "stream closed (held)");
+        } else if (!hold_req && p_sys->closed) {
+            int r = audio_stream_open(p_sys->rate, p_sys->channels);
+            if (r == 0) {
+                p_sys->closed = p_sys->busy = p_sys->started = VLC_FALSE;
+                p_sys->written = 0;
+                p_sys->played_ms = 0;
+                taken = 0;
+                msg_Dbg(p_aout, "stream reopened");
+            } else {
+                msleep(100000);
+            }
+        }
+
+        vlc_bool_t mute = p_sys->busy || p_sys->closed;
+        mtime_t latency = mute ? 0 : Latency(p_sys);
         aout_buffer_t *p_buffer = aout_OutputNextBuffer(p_aout, mdate() + latency, VLC_FALSE);
 
-        if (p_sys->busy) {
-            /* The player has the output: let time pass for what is dropped. */
+        if (mute) {
+            /* No stream: let time pass for what is dropped. */
             if (p_buffer) {
                 mtime_t wait = p_buffer->end_date - p_buffer->start_date;
                 aout_BufferFree(p_buffer);
@@ -277,6 +318,7 @@ static void *Thread(void *data)
         if (r == GZ_EBUSY) {
             msg_Warn(p_aout, "the music player took the audio output");
             p_sys->busy = VLC_TRUE;
+            taken = 1;
         }
     }
     return NULL;

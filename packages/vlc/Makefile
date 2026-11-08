@@ -62,7 +62,7 @@ MPEG2_SRC := $(addprefix libmpeg2/libmpeg2/,alloc.c cpu_accel.c cpu_state.c deco
 GLUE_SRC := $(wildcard glaze/*.c)
 # Glaze's own modules (glaze/modules/<name>.c): builtins under the glue's
 # warning policy.
-GLUE_MODULES := aout_glaze vout_glaze codec_mjpeg
+GLUE_MODULES := aout_glaze vout_glaze codec_mjpeg intf_glaze
 GMOD_SRC := $(addprefix glaze/modules/,$(addsuffix .c,$(GLUE_MODULES)))
 
 SOURCES := $(GLUE_SRC) $(GMOD_SRC) $(CORE_SRC) $(foreach m,$(MODULES),$(MOD_$(m))) $(MAD_SRC) $(MPEG2_SRC)

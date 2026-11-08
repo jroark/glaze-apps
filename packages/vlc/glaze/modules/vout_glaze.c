@@ -9,9 +9,9 @@
  * writes into, and scaled by libgfx as they are shown: VLC 0.8 has no RGB
  * scaler without ffmpeg. The bars around the picture are cleared once.
  *
- * Pictures are presented from the vout thread. Until the libui interface,
- * nothing else draws; the interface will take vout_glaze_lock() around its own
- * drawing.
+ * Pictures are presented from the vout thread, and only while the interface
+ * shows the video; it draws under the same lock (vout_glaze.h), and can put
+ * its controls over each picture with an overlay function.
  */
 #include <stdlib.h>
 #include <string.h>
@@ -46,12 +46,20 @@ vlc_module_end();
 
 struct vout_sys_t {
     gfx_rect area;              /* where the picture is shown */
-    vlc_bool_t cleared;         /* the bars have been painted */
     int shown;                  /* pictures displayed, for the log */
     mtime_t first, last;        /* when the first and latest were shown */
 };
 
 static struct gz_mutex draw_lock = GZ_MUTEX_INIT;
+
+/* Under draw_lock. */
+static int show, active, need_clear = 1;
+static void (*overlay)(gfx_surface *);
+static struct {
+    gfx_surface src;            /* the latest picture's pixels */
+    gfx_rect area;
+    int valid;
+} last;
 
 void vout_glaze_lock(void)
 {
@@ -61,6 +69,50 @@ void vout_glaze_lock(void)
 void vout_glaze_unlock(void)
 {
     gz_mutex_unlock(&draw_lock);
+}
+
+void vout_glaze_show(int on)
+{
+    vout_glaze_lock();
+    if (on && !show)
+        need_clear = 1;
+    show = on;
+    vout_glaze_unlock();
+}
+
+void vout_glaze_set_overlay(void (*draw)(gfx_surface *s))
+{
+    vout_glaze_lock();
+    overlay = draw;
+    vout_glaze_unlock();
+}
+
+int vout_glaze_active(void)
+{
+    return active;
+}
+
+/* The latest picture at its place on the surface. */
+static void Blit(void)
+{
+    gfx_rect a = last.area;
+
+    if (last.src.w == a.w && last.src.h == a.h) {
+        uint16_t *dst = ui.surf.px + a.y * ui.surf.stride + a.x;
+        const uint16_t *src = last.src.px;
+        for (int y = 0; y < a.h; y++, dst += ui.surf.stride, src += last.src.stride)
+            memcpy(dst, src, (size_t)a.w * 2);
+    } else {
+        gfx_blit_scaled(&ui.surf, a, &last.src, gfx_r(0, 0, last.src.w, last.src.h), 255);
+    }
+}
+
+void vout_glaze_repaint(void)
+{
+    gfx_fill(&ui.surf, gfx_r(0, 0, UI_W, UI_H), 0x000000);
+    need_clear = 0;
+    if (last.valid)
+        Blit();
 }
 
 static int Open(vlc_object_t *p_this)
@@ -118,7 +170,6 @@ static int Init(vout_thread_t *p_vout)
     struct vout_sys_t *p_sys = p_vout->p_sys;
 
     p_sys->area = Fit(p_vout->render.i_aspect);
-    p_sys->cleared = VLC_FALSE;
 
     p_vout->output.i_chroma = VLC_FOURCC('R', 'V', '1', '6');
     p_vout->output.i_rmask = 0xf800;
@@ -167,12 +218,22 @@ static int Init(vout_thread_t *p_vout)
     msg_Dbg(p_vout, "%ux%u %4.4s shown at %d,%d %dx%d", p_vout->render.i_width,
             p_vout->render.i_height, (char *)&p_vout->render.i_chroma, p_sys->area.x,
             p_sys->area.y, p_sys->area.w, p_sys->area.h);
+    vout_glaze_lock();
+    active = 1;
+    need_clear = 1;
+    last.valid = 0;
+    vout_glaze_unlock();
     return VLC_SUCCESS;
 }
 
 static void End(vout_thread_t *p_vout)
 {
     struct vout_sys_t *p_sys = p_vout->p_sys;
+
+    vout_glaze_lock();
+    active = 0;
+    last.valid = 0;
+    vout_glaze_unlock();
     if (p_sys->shown > 1) {
         int ms = (int)((p_sys->last - p_sys->first) / 1000);
         int fps10 = ms ? (p_sys->shown - 1) * 10000 / ms : 0;
@@ -196,27 +257,29 @@ static int Manage(vout_thread_t *p_vout)
 static void Display(vout_thread_t *p_vout, picture_t *p_pic)
 {
     struct vout_sys_t *p_sys = p_vout->p_sys;
-    gfx_rect a = p_sys->area;
     plane_t *pl = &p_pic->p[0];
 
     vout_glaze_lock();
-    if (!p_sys->cleared) {
+    gfx_surface_init(&last.src, (uint16_t *)pl->p_pixels, pl->i_visible_pitch / 2,
+                     pl->i_visible_lines, pl->i_pitch / 2);
+    last.area = p_sys->area;
+    last.valid = 1;
+    if (!show) {
+        vout_glaze_unlock();
+        return;
+    }
+    if (need_clear) {
         gfx_fill(&ui.surf, gfx_r(0, 0, UI_W, UI_H), 0x000000);
         ui_invalidate_all();
-        p_sys->cleared = VLC_TRUE;
+        need_clear = 0;
     }
-    if (pl->i_visible_pitch / 2 == a.w && pl->i_visible_lines == a.h) {
-        uint16_t *dst = ui.surf.px + a.y * ui.surf.stride + a.x;
-        const uint8_t *src = pl->p_pixels;
-        for (int y = 0; y < a.h; y++, dst += ui.surf.stride, src += pl->i_pitch)
-            memcpy(dst, src, (size_t)a.w * 2);
+    Blit();
+    if (overlay) {
+        overlay(&ui.surf);
+        ui_invalidate_all();
     } else {
-        gfx_surface s;
-        gfx_surface_init(&s, (uint16_t *)pl->p_pixels, pl->i_visible_pitch / 2,
-                         pl->i_visible_lines, pl->i_pitch / 2);
-        gfx_blit_scaled(&ui.surf, a, &s, gfx_r(0, 0, s.w, s.h), 255);
+        ui_invalidate(p_sys->area);
     }
-    ui_invalidate(a);
     ui_present();
     vout_glaze_unlock();
     p_sys->last = mdate();
