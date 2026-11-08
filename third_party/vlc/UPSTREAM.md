@@ -35,8 +35,12 @@ Copyright notices in the individual files remain in place.
   pthread, Win32 and BeOS ones in `vlc_threads.h`, `vlc_threads_funcs.h` and
   `src/misc/threads.c` (mutexes are libc's `gz_mutex`; condition variables and
   joinable threads are built from kernel semaphores in
-  `packages/vlc/glaze/threads.c`), and a Glaze case in `src/misc/mtime.c` for
-  `mdate`, `mwait` and `msleep` on the monotonic clock.
+  `packages/vlc/glaze/threads.c`). The system has 256 semaphores and VLC gives
+  each of its objects, modules included, two mutexes and a condition variable,
+  so a mutex's semaphore is made on its first lock and a condition variable's on
+  its first wait: VLC then holds about 70 rather than all of them. A Glaze
+  case in `src/misc/mtime.c` gives `mdate`, `mwait` and `msleep` on the
+  monotonic clock.
 - `0002-glaze-builtins-and-files.patch`: `module_handle_t` for a build without a
   plugin loader; `unicode.c` treats Glaze's paths as UTF-8; `access/file.c`
   takes the FILE-stream path written for Windows CE, since Glaze's `read` and

@@ -75,12 +75,15 @@
      i_result = 0;
 --- a/vlc/src/misc/threads.c
 +++ b/vlc/src/misc/threads.c
-@@ -294,6 +294,9 @@
+@@ -294,6 +294,12 @@
  #   endif
      return pthread_mutex_init( &p_mutex->mutex, NULL );
- 
+
 +#elif defined( GLAZE_THREADS )
-+    return gz_mutex_init( &p_mutex->mutex );
++    /* The kernel semaphore is made on the first lock: the system has 256,
++     * and most of the mutexes of VLC's many objects are never locked. */
++    p_mutex->mutex = (struct gz_mutex)GZ_MUTEX_INIT;
++    return 0;
 +
  #elif defined( HAVE_CTHREADS_H )
      mutex_init( p_mutex );

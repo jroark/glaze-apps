@@ -295,7 +295,10 @@ int __vlc_mutex_init( vlc_object_t *p_this, vlc_mutex_t *p_mutex )
     return pthread_mutex_init( &p_mutex->mutex, NULL );
 
 #elif defined( GLAZE_THREADS )
-    return gz_mutex_init( &p_mutex->mutex );
+    /* The kernel semaphore is made on the first lock: the system has 256,
+     * and most of the mutexes of VLC's many objects are never locked. */
+    p_mutex->mutex = (struct gz_mutex)GZ_MUTEX_INIT;
+    return 0;
 
 #elif defined( HAVE_CTHREADS_H )
     mutex_init( p_mutex );

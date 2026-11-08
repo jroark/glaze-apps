@@ -8,38 +8,89 @@
  * and so VLC's configuration directory, is under.
  */
 #include <glaze/audio.h>
+#include <glaze/net.h>
 #include <glaze/sys.h>
 #include <glaze/ui.h>
-#include <sys/stat.h>
+#include <stdio.h>
+#include <string.h>
 #include <vlc/vlc.h>
 
 #define AUTOPLAY "/Card/autoplay.m3u"
 
+#define MAX_ENTRIES 16
+#define MAX_ENTRY   256
+static char entries[MAX_ENTRIES][MAX_ENTRY];
+static int nentries;
+
+/* The playlist is read at once: a network test then swaps the card for a
+ * network card (be300 --cf-eject-after, --net-insert-after). Names that are
+ * not URLs or absolute paths are on the card. */
+static void read_autoplay(void)
+{
+    FILE *f = fopen(AUTOPLAY, "r");
+    char line[MAX_ENTRY];
+
+    if (!f)
+        return;
+    while (nentries < MAX_ENTRIES && fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\r\n")] = '\0';
+        if (!line[0] || line[0] == '#')
+            continue;
+        snprintf(entries[nentries++], MAX_ENTRY, "%s%s",
+                 strstr(line, "://") || line[0] == '/' ? "" : "/Card/", line);
+    }
+    fclose(f);
+}
+
 static void play_autoplay(int id)
 {
-    struct stat st;
-    if (stat(AUTOPLAY, &st) != 0)
+    if (!nentries)
         return;
+    /* net_wait_up returns at once while no network card is in; the card
+     * may be swapped in after launch, so keep asking for up to 60 s. */
+    for (int i = 0; i < nentries; i++) {
+        if (strstr(entries[i], "://")) {
+            int r = -1;
+            for (int t = 0; t < 60 && r != 0; t++) {
+                r = net_wait_up(1000);
+                if (r != 0)
+                    gz_sleep_ms(1000);
+            }
+            fprintf(stderr, "vlc: network %s\n", r == 0 ? "up" : "not up");
+            break;
+        }
+    }
 
     struct audio_state before, after;
     int have_state = audio_get_state(&before) == 0;
     uint64_t start = gz_time_us();
 
-    VLC_AddTarget(id, AUTOPLAY, NULL, 0, PLAYLIST_APPEND | PLAYLIST_GO, PLAYLIST_END);
-    for (int i = 0; i < 100 && !VLC_IsPlaying(id); i++)
+    for (int i = 0; i < nentries; i++)
+        VLC_AddTarget(id, entries[i], NULL, 0, PLAYLIST_APPEND | (i ? 0 : PLAYLIST_GO), PLAYLIST_END);
+    for (int i = 0; i < 300 && !VLC_IsPlaying(id); i++)
         gz_sleep_ms(50);
-    /* Between items nothing is playing for a moment: allow 3 s for the next. */
-    for (int idle = 0; idle < 30; ) {
+    /* Between items nothing is playing for a moment: allow 8 s for the next
+     * (a network one connects and fills its cache first). */
+    /* "late" is the most a 100 ms sleep overslept in the last second: how
+     * busy the CPU is. */
+    uint64_t next = 0;
+    int late = 0;
+    for (int idle = 0; idle < 80; ) {
+        uint64_t t = gz_time_us();
         gz_sleep_ms(100);
+        int over = (int)((gz_time_us() - t) / 1000) - 100;
+        if (over > late)
+            late = over;
         if (!VLC_IsPlaying(id)) {
             idle++;
             continue;
         }
         idle = 0;
-        static uint64_t next;
         if (gz_time_us() >= next) {
-            fprintf(stderr, "vlc: playing %d/%d s\n", VLC_TimeGet(id), VLC_LengthGet(id));
+            fprintf(stderr, "vlc: playing %d/%d s, late %d ms\n", VLC_TimeGet(id),
+                    VLC_LengthGet(id), late);
             next = gz_time_us() + 1000000;
+            late = 0;
         }
     }
     fprintf(stderr, "vlc: playlist done after %d ms", (int)((gz_time_us() - start) / 1000));
@@ -51,6 +102,7 @@ static void play_autoplay(int id)
 int main(void)
 {
     ui_init(SB_STATUS_GRAY);
+    read_autoplay();
 
     char *args[] = {
         "vlc", "--intf", "dummy", "--aout", "glaze", "--vout", "glaze",
