@@ -1,0 +1,27 @@
+# breakout: install from a card holding only breakout.gzp, play, then pause.
+#   .claude/skills/glaze-ui-test/scripts/ui_test.sh breakout
+# unlock swipe
+3000 drag 40 280 235 280 500
+# Files icon on the home screen
+4500 tap 30 120
+# Card row in Files
+6500 tap 120 64
+# first file on the card: breakout.gzp
+8500 tap 120 64
+# Install on Flash
+10500 tap 120 242
+# OK on the "installed" message
+15000 tap 120 203
+# back to the home screen, then the new app's icon
+16000 key home
+18000 tap 90 192
+# --- breakout is in front from about 19000 ---
+# serve the ball, then steer with held keys
+20000 key ok
+21000 key left 900
+23000 key right 1400
+# steer with a finger: drag the paddle, then serve again
+26000 drag 60 216 180 216 500
+28000 key ok
+# pause: the overlay is what the screenshot should show
+30000 key esc
