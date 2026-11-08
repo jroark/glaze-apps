@@ -1,0 +1,26 @@
+# Pac-Man: install from a card holding only pacman.gzp, play, pause.
+#   .claude/skills/glaze-ui-test/scripts/ui_test.sh pacman
+# Mid-game frame: run with seconds=29 to screenshot before the ESC.
+# unlock swipe
+3000 drag 40 280 235 280 500
+# Files icon on the home screen
+4500 tap 30 120
+# Card row in Files
+6500 tap 120 64
+# first file on the card: pacman.gzp (leave time for the row animation)
+9000 tap 120 64
+# Install on Flash
+12000 tap 120 242
+# OK on the "installed" message
+17000 tap 120 203
+# back to the home screen, then the new app's icon
+18000 key home
+20000 tap 90 192
+# --- pacman is in front from about 21000 ---
+22000 key left
+23500 key down
+24500 drag 30 207 130 207 400   # swipe right on the maze
+26500 key up
+27500 key right
+# pause (this also saves): the frame shows the Paused menu
+29500 key esc

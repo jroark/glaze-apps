@@ -1,0 +1,4 @@
+id=pacman
+name=Pac-Man
+version=1.0
+exec=app
