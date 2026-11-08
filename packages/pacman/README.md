@@ -1,12 +1,12 @@
-# Pac-Man
+# Muncher
 
-Installable Glaze game: a Pac-Man style maze chase. Build with
+Installable Glaze game: a maze chase. Build with
 `.claude/skills/glaze-build/scripts/build_app.sh pacman`, then install
 `out/pkg/pacman.gzp` from Files on a card.
 
 ## Controls
 
-- Arrow keys or a swipe anywhere on the maze steer Pac-Man (turns apply at
+- Arrow keys or a swipe anywhere on the maze steer the muncher (turns apply at
   tile centres; the wanted direction is buffered, so a press during a
   corridor still takes effect at the next junction).
 - ESC pauses (menu: Resume / New Game, keys or taps). Home saves and
@@ -18,15 +18,16 @@ Installable Glaze game: a Pac-Man style maze chase. Build with
 
 - 15x17 tile maze with a wrap-around tunnel in the middle row, four power
   pellets in the corners and 113 pellets.
-- Blinky chases Pac-Man, Pinky aims four tiles ahead of him, Inky flanks
-  through Blinky's position and Clyde hangs back when close. Ghosts
+- The red ghost chases the muncher, the pink one aims four tiles ahead, the
+  cyan one flanks through the red one's position and the orange one hangs
+  back when close. Ghosts
   alternate scatter and chase phases and never re-enter the ghost house.
 - Pellet 10, power pellet 50, fruit 100 (a cherry appears below the ghost
   house after 20 and 50 pellets), frightened ghosts 200/400/800/1600.
 - A power pellet frightens the ghosts (they reverse, slow down, choose
   randomly and blink near the end); touching a normal ghost costs a life.
   Clearing all pellets clears the level; power mode shortens each level.
-- Pac-Man chomps while moving and shrinks when caught; ghosts wiggle their
+- The muncher chomps while moving and shrinks when caught; ghosts wiggle their
   skirts. Square-wave chiptune cues (opening tune, wak-wak, power-up, ghost
   eaten, fruit, death, level fanfare) stream through the audio server at
   11025 Hz and follow the system volume; sound closes on pause and Home.

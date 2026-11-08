@@ -132,7 +132,7 @@ uint8_t ghost_speed(const Game *g, int gi)
         return 6;
     if (g->frightened)
         return 5;
-    return gi == G_BLINKY ? 8 : 7;
+    return gi == G_RED ? 8 : 7;
 }
 
 static uint16_t fright_steps(const Game *g)
@@ -147,26 +147,26 @@ static void place_entities(Game *g)
     g->pac_sub = 112;
     g->pac_dir = DIR_LEFT;
     g->desired = DIR_NONE;
-    g->g[G_BLINKY].tile = (uint8_t)(6 * MAZE_W + 7);
-    g->g[G_BLINKY].sub = 112;
-    g->g[G_BLINKY].dir = DIR_LEFT;
-    g->g[G_BLINKY].in_house = 0;
-    g->g[G_BLINKY].release = 0;
-    g->g[G_PINKY].tile = (uint8_t)HOUSE_MID;
-    g->g[G_PINKY].sub = 112;
-    g->g[G_PINKY].dir = DIR_UP;
-    g->g[G_PINKY].in_house = 1;
-    g->g[G_PINKY].release = 125;
-    g->g[G_INKY].tile = (uint8_t)(HOUSE_Y * MAZE_W + 6);
-    g->g[G_INKY].sub = 112;
-    g->g[G_INKY].dir = DIR_UP;
-    g->g[G_INKY].in_house = 1;
-    g->g[G_INKY].release = 312;
-    g->g[G_CLYDE].tile = (uint8_t)(HOUSE_Y * MAZE_W + 8);
-    g->g[G_CLYDE].sub = 112;
-    g->g[G_CLYDE].dir = DIR_UP;
-    g->g[G_CLYDE].in_house = 1;
-    g->g[G_CLYDE].release = RELEASE_MAX;
+    g->g[G_RED].tile = (uint8_t)(6 * MAZE_W + 7);
+    g->g[G_RED].sub = 112;
+    g->g[G_RED].dir = DIR_LEFT;
+    g->g[G_RED].in_house = 0;
+    g->g[G_RED].release = 0;
+    g->g[G_PINK].tile = (uint8_t)HOUSE_MID;
+    g->g[G_PINK].sub = 112;
+    g->g[G_PINK].dir = DIR_UP;
+    g->g[G_PINK].in_house = 1;
+    g->g[G_PINK].release = 125;
+    g->g[G_CYAN].tile = (uint8_t)(HOUSE_Y * MAZE_W + 6);
+    g->g[G_CYAN].sub = 112;
+    g->g[G_CYAN].dir = DIR_UP;
+    g->g[G_CYAN].in_house = 1;
+    g->g[G_CYAN].release = 312;
+    g->g[G_ORANGE].tile = (uint8_t)(HOUSE_Y * MAZE_W + 8);
+    g->g[G_ORANGE].sub = 112;
+    g->g[G_ORANGE].dir = DIR_UP;
+    g->g[G_ORANGE].in_house = 1;
+    g->g[G_ORANGE].release = RELEASE_MAX;
     g->frightened = 0;
     g->fright_timer = 0;
     g->chain = 0;
@@ -226,30 +226,30 @@ static int ghost_target(const Game *g, int gi, int *tx, int *ty)
     int px = g->pac_tile % MAZE_W, py = g->pac_tile / MAZE_W;
     int d = g->pac_dir;
     switch (gi) {
-    case G_BLINKY:
+    case G_RED:
         *tx = px;
         *ty = py;
         break;
-    case G_PINKY:
+    case G_PINK:
         *tx = px + 4 * DX[d];
         *ty = py + 4 * DY[d];
         break;
-    case G_INKY: {
-        int bx = g->g[G_BLINKY].tile % MAZE_W, by = g->g[G_BLINKY].tile / MAZE_W;
+    case G_CYAN: {
+        int bx = g->g[G_RED].tile % MAZE_W, by = g->g[G_RED].tile / MAZE_W;
         int ax = px + 2 * DX[d], ay = py + 2 * DY[d];
         *tx = 2 * ax - bx;
         *ty = 2 * ay - by;
         break;
     }
-    default: { /* Clyde: chases from far, goes home when close */
-        int cx = g->g[G_CLYDE].tile % MAZE_W, cy = g->g[G_CLYDE].tile / MAZE_W;
+    default: { /* Orange: chases from far, goes home when close */
+        int cx = g->g[G_ORANGE].tile % MAZE_W, cy = g->g[G_ORANGE].tile / MAZE_W;
         int dist2 = (cx - px) * (cx - px) + (cy - py) * (cy - py);
         if (dist2 > 64) {
             *tx = px;
             *ty = py;
         } else {
-            *tx = SCAT_X[G_CLYDE];
-            *ty = SCAT_Y[G_CLYDE];
+            *tx = SCAT_X[G_ORANGE];
+            *ty = SCAT_Y[G_ORANGE];
         }
         break;
     }

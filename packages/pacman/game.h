@@ -1,6 +1,6 @@
 #ifndef PACMAN_GAME_H
 #define PACMAN_GAME_H
-/* Pac-Man rules. Pure C: no glaze/ includes, so tests/native/pacman.c can
+/* Muncher rules. Pure C: no glaze/ includes, so tests/native/pacman.c can
  * test it on the host. main.c draws it and feeds it input.
  *
  * The maze is MAZE_W x MAZE_H tiles. An entity's position is its tile plus
@@ -17,7 +17,7 @@
 #define SIM_MS 16  /* one simulation step */
 
 /* Ghost ids. */
-enum { G_BLINKY, G_PINKY, G_INKY, G_CLYDE, GHOST_COUNT };
+enum { G_RED, G_PINK, G_CYAN, G_ORANGE, GHOST_COUNT };
 /* Directions (a turn is always allowed to DIR_NONE via game_set_dir's guard). */
 enum { DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT, DIR_NONE = 255 };
 /* What main.c shows over the maze. */

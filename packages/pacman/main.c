@@ -1,4 +1,4 @@
-/* Pac-Man: the Glaze side. Rules live in game.c; this file draws (with the
+/* Muncher: the Glaze side. Rules live in game.c; this file draws (with the
  * mouth/skirt animations driven by game.step_cnt), reads input, plays
  * square-wave chiptune sounds through the audio server, saves, and follows
  * the app lifecycle. */
@@ -233,7 +233,7 @@ static void draw(void)
     gfx_surface *s = &ui.surf;
     char b[40];
     gfx_fill(s, gfx_r(0, 0, UI_W, UI_H), 0x0B0B1E);
-    gfx_text(s, 10, 8, ui_font(FONT_B14), "Pac-Man", 0xF2C03C, 255);
+    gfx_text(s, 10, 8, ui_font(FONT_B14), "Muncher", 0xF2C03C, 255);
     snprintf(b, sizeof(b), "%u", (unsigned)game.score);
     gfx_text(s, 10, 26, ui_font(FONT_B12), b, 0xE5ECF5, 255);
     snprintf(b, sizeof(b), "Best %u", (unsigned)game.best);

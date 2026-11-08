@@ -146,7 +146,7 @@ sky1942-test: ../tests/native/sky1942.c ../packages/sky1942/game.c ../packages/s
 	UBSAN_OPTIONS=halt_on_error=1 $(O)/sky1942-test
 .PHONY: sky1942-test
 
-# Pac-Man rules and save-state validation.
+# Muncher rules and save-state validation.
 pacman-test: ../tests/native/pacman.c ../packages/pacman/game.c ../packages/pacman/game.h
 	$(CC) $(CFLAGS) -fsanitize=address,undefined $(filter %.c,$^) -o $(O)/pacman-test
 	UBSAN_OPTIONS=halt_on_error=1 $(O)/pacman-test

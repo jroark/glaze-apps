@@ -1,4 +1,4 @@
 id=pacman
-name=Pac-Man
+name=Muncher
 version=1.0
 exec=app

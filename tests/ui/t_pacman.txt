@@ -1,4 +1,4 @@
-# Pac-Man: install from a card holding only pacman.gzp, play, pause.
+# Muncher: install from a card holding only pacman.gzp, play, pause.
 #   .claude/skills/glaze-ui-test/scripts/ui_test.sh pacman
 # Mid-game frame: run with seconds=29 to screenshot before the ESC.
 # unlock swipe

@@ -32,10 +32,10 @@ static void test_new(void)
     assert(g.total_dots == game_total_dots() && g.total_dots > 100);
     assert(g.dots_eaten == 0);
     assert(g.pac_tile == T(7, 10) && g.pac_sub == 112 && g.pac_dir == DIR_LEFT);
-    assert(!g.g[G_BLINKY].in_house && g.g[G_BLINKY].tile == T(7, 6));
-    assert(g.g[G_PINKY].in_house && g.g[G_PINKY].tile == T(7, 8));
-    assert(g.g[G_INKY].in_house && g.g[G_INKY].tile == T(6, 8));
-    assert(g.g[G_CLYDE].in_house && g.g[G_CLYDE].tile == T(8, 8));
+    assert(!g.g[G_RED].in_house && g.g[G_RED].tile == T(7, 6));
+    assert(g.g[G_PINK].in_house && g.g[G_PINK].tile == T(7, 8));
+    assert(g.g[G_CYAN].in_house && g.g[G_CYAN].tile == T(6, 8));
+    assert(g.g[G_ORANGE].in_house && g.g[G_ORANGE].tile == T(8, 8));
     assert(g.rng != 0);
     /* the four power pellets exist */
     int powers = 0;
@@ -141,7 +141,7 @@ static void test_tunnel_wrap(void)
     run(&g, 30); /* 240 units: past the mouth into the right end */
     assert(g.pac_tile / MAZE_W == 8);
     assert(g.pac_tile % MAZE_W >= 12); /* wrapped to the right side */
-    /* ghosts use the tunnel too: chase with Blinky long after release */
+    /* ghosts use the tunnel too: chase with the red ghost long after release */
 }
 
 static void test_power_fright_ghost_chain(void)
@@ -160,19 +160,19 @@ static void test_power_fright_ghost_chain(void)
     /* eating frightened ghosts: chain values 200, 400, 800, 1600 */
     uint32_t base = g.score;
     for (int i = 0; i < GHOST_COUNT; i++) {
-        /* park Blinky right on Pac and trigger a collision */
+        /* park the red ghost right on Pac and trigger a collision */
         Game *p = &g;
-        p->g[G_BLINKY].tile = p->pac_tile;
-        p->g[G_BLINKY].sub = p->pac_sub;
-        p->g[G_BLINKY].dir = p->pac_dir;
-        p->g[G_BLINKY].in_house = 0;
+        p->g[G_RED].tile = p->pac_tile;
+        p->g[G_RED].sub = p->pac_sub;
+        p->g[G_RED].dir = p->pac_dir;
+        p->g[G_RED].in_house = 0;
         run(p, 1);
         uint32_t want = 200u << (unsigned)i;
         if (want > 1600)
             want = 1600;
         assert(g.score == base + want);
         base += want;
-        assert(g.g[G_BLINKY].in_house); /* sent home */
+        assert(g.g[G_RED].in_house); /* sent home */
         assert(g.frightened);           /* still in power mode */
     }
     /* power mode expires */
@@ -184,11 +184,11 @@ static void test_death_and_lives(void)
 {
     Game g;
     game_new(&g, 11, 0);
-    /* a normal ghost touching Pac kills: drop Blinky on him */
-    g.g[G_BLINKY].tile = g.pac_tile;
-    g.g[G_BLINKY].sub = g.pac_sub;
-    g.g[G_BLINKY].dir = g.pac_dir;
-    g.g[G_BLINKY].in_house = 0;
+    /* a normal ghost touching Pac kills: drop the red ghost on him */
+    g.g[G_RED].tile = g.pac_tile;
+    g.g[G_RED].sub = g.pac_sub;
+    g.g[G_RED].dir = g.pac_dir;
+    g.g[G_RED].in_house = 0;
     run(&g, 1);
     assert(g.state == ST_DYING && g.lives == 3);
     run(&g, 44); /* after the countdown a life is lost and places reset */
@@ -197,10 +197,10 @@ static void test_death_and_lives(void)
     assert(g.pac_tile == T(7, 10));
     /* lose the rest */
     for (int i = 0; i < 10 && g.state != ST_OVER; i++) {
-        g.g[G_BLINKY].tile = g.pac_tile;
-        g.g[G_BLINKY].sub = g.pac_sub;
-        g.g[G_BLINKY].dir = g.pac_dir;
-        g.g[G_BLINKY].in_house = 0;
+        g.g[G_RED].tile = g.pac_tile;
+        g.g[G_RED].sub = g.pac_sub;
+        g.g[G_RED].dir = g.pac_dir;
+        g.g[G_RED].in_house = 0;
         run(&g, 1);
         run(&g, 44);
     }
@@ -283,9 +283,9 @@ static void test_ghost_ai_reaches(void)
     game_new(&g, 21, 0);
     /* shorten house releases so all four are out well inside 400 steps,
      * even if a death resets them */
-    g.g[G_PINKY].release = 20;
-    g.g[G_INKY].release = 40;
-    g.g[G_CLYDE].release = 60;
+    g.g[G_PINK].release = 20;
+    g.g[G_CYAN].release = 40;
+    g.g[G_ORANGE].release = 60;
     int seen_free[GHOST_COUNT] = {0};
     for (int i = 0; i < 400; i++) {
         game_set_dir(&g, i % 100 < 50 ? DIR_LEFT : DIR_RIGHT);
@@ -311,9 +311,9 @@ static void test_house_bounce_bounded(void)
      * or a mid-bounce save would hold an impossible value */
     Game g, h;
     game_new(&g, 43, 0);
-    for (int i = 0; i < 120; i++) { /* before Pinky's 125-step release */
+    for (int i = 0; i < 120; i++) { /* before the pink ghost's 125-step release */
         game_tick(&g, 16);
-        for (int j = G_PINKY; j < GHOST_COUNT; j++) {
+        for (int j = G_PINK; j < GHOST_COUNT; j++) {
             assert(g.g[j].sub <= 223);
             if (g.g[j].in_house && g.g[j].release)
                 assert(g.g[j].dir == DIR_UP || g.g[j].dir == DIR_DOWN);
@@ -355,14 +355,14 @@ static void test_save_roundtrip(void)
     assert(!game_decode(&h, buf, sizeof(buf)));
 
     game_new(&v, 1, 0);
-    v.g[G_PINKY].in_house = 0;
-    v.g[G_PINKY].tile = (uint8_t)T(7, 8); /* free ghost parked in the house */
+    v.g[G_PINK].in_house = 0;
+    v.g[G_PINK].tile = (uint8_t)T(7, 8); /* free ghost parked in the house */
     game_encode(&v, buf);
     assert(!game_decode(&h, buf, sizeof(buf)));
 
     game_new(&v, 1, 0);
-    v.g[G_PINKY].in_house = 0;
-    v.g[G_PINKY].tile = (uint8_t)T(7, 7); /* just left: on the door, valid */
+    v.g[G_PINK].in_house = 0;
+    v.g[G_PINK].tile = (uint8_t)T(7, 7); /* just left: on the door, valid */
     game_encode(&v, buf);
     assert(game_decode(&h, buf, sizeof(buf)));
 
