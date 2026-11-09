@@ -1,0 +1,4 @@
+id=vlc
+name=VLC
+version=0.1
+exec=app

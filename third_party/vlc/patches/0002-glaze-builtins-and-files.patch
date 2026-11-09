@@ -1,0 +1,80 @@
+--- a/vlc/include/modules.h
++++ b/vlc/include/modules.h
+@@ -43,6 +43,8 @@
+ typedef void * module_handle_t;
+ #elif defined(HAVE_DL_SHL_LOAD)
+ typedef shl_t module_handle_t;
++#else
++typedef void * module_handle_t;                /* builtins only */
+ #endif
+ 
+ /*****************************************************************************
+--- a/vlc/src/misc/unicode.c
++++ b/vlc/src/misc/unicode.c
+@@ -51,7 +51,7 @@
+ # define lstat( a, b ) stat(a, b)
+ #endif
+ 
+-#if defined( __APPLE__ ) || defined( __BEOS__ )
++#if defined( __APPLE__ ) || defined( __BEOS__ ) || defined( SYS_GLAZE )
+ /* Define this if the OS always use UTF-8 internally */
+ # define ASSUME_UTF8 1
+ #endif
+--- a/vlc/modules/access/file.c
++++ b/vlc/modules/access/file.c
+@@ -48,6 +48,11 @@
+ #   include <poll.h>
+ #endif
+ 
++#if defined( SYS_GLAZE )
++/* Glaze's read() and close() are for sockets: use the FILE path of WinCE. */
++#   define UNDER_CE 1
++#endif
++
+ #if defined( WIN32 ) && !defined( UNDER_CE )
+ /* stat() support for large files on win32 */
+ #   define stat _stati64
+@@ -429,7 +434,7 @@
+     }
+ 
+     p_sys->i_nb_reads++;
+-#ifdef HAVE_SYS_STAT_H
++#if defined( HAVE_SYS_STAT_H ) && !defined( UNDER_CE )
+     if( p_access->info.i_size != 0 &&
+         (p_sys->i_nb_reads % INPUT_FSTAT_NB_READS) == 0 )
+     {
+--- a/vlc/modules/demux/playlist/playlist.c
++++ b/vlc/modules/demux/playlist/playlist.c
+@@ -80,6 +80,7 @@
+         add_shortcut( "pls-open" );
+         set_capability( "demux2", 10 );
+         set_callbacks( E_(Import_PLS), E_(Close_PLS) );
++#ifndef SYS_GLAZE       /* XML formats need an xml module; no DVB on Glaze */
+     add_submodule();
+         set_description( _("B4S playlist import") );
+         add_shortcut( "b4s-open" );
+@@ -108,6 +109,7 @@
+         set_callbacks( E_(Import_Shoutcast), E_(Close_Shoutcast) );
+         add_bool( "shoutcast-show-adult", VLC_FALSE, NULL,
+                    SHOW_ADULT_TEXT, SHOW_ADULT_LONGTEXT, VLC_FALSE );
++#endif
+ vlc_module_end();
+ 
+ 
+--- a/vlc/modules/misc/playlist/export.c
++++ b/vlc/modules/misc/playlist/export.c
+@@ -46,6 +46,7 @@
+         set_capability( "playlist export" , 0);
+         set_callbacks( Export_M3U , NULL );
+ 
++#ifndef SYS_GLAZE       /* Glaze keeps M3U only */
+     add_submodule();
+         set_description( _("Old playlist exporter") );
+         add_shortcut( "export-old" );
+@@ -57,5 +58,6 @@
+         add_shortcut( "export-xspf" );
+         set_capability( "playlist export" , 0);
+         set_callbacks( E_(xspf_export_playlist) , NULL );
++#endif
+ 
+ vlc_module_end();

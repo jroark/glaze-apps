@@ -1,0 +1,31 @@
+# VLC: install from the CF card, launch, open the memory card in the file
+# browser and play mpeg1.mpg, then pause it with OK.
+# The final screen is the paused video with the controls over it; the log
+# has "vlc: ..." lines (interface ready, open, playing, paused).
+# The card needs vlc.gzp first in its listing (the install taps pick the
+# first entry), then the media, with no /Card/autoplay.m3u (that plays itself):
+#   ../glaze-os/tools/mkcfimg.sh out/vlc-cf.img 16 16 out/pkg/vlc.gzp \
+#       adpcm.wav mjpeg.avi mpeg1.mpg test.mp3 test.wav
+#   CF=out/vlc-cf.img ../glaze-os/tests/run.sh tests/ui/t_vlc.txt 36
+# With exactly those five files mpeg1.mpg is the third row. Install taps
+# match t_chess.txt.
+
+# 1) unlock, then install from the CF card: Files, CF card, package, Install
+3000 drag 40 280 235 280 500
+4500 tap 30 120
+6500 tap 120 64
+8500 tap 120 64
+10500 tap 120 242
+15000 tap 120 203
+
+# 2) launch from the springboard
+16000 key home
+18000 tap 90 192
+
+# 3) Memory Card, then mpeg1.mpg (rows are 44 px below the 30 px nav bar,
+#    under the 16 px status bar)
+25000 tap 120 156
+27000 tap 120 156
+
+# 4) OK pauses and brings up the controls, which stay up while paused
+31000 key ok

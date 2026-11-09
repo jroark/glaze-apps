@@ -1,0 +1,38 @@
+--- a/vlc/src/misc/charset.c
++++ b/vlc/src/misc/charset.c
+@@ -580,7 +580,7 @@
+     if( psz_lang == NULL || psz_lang[0] == '\0' )
+     {
+         psz_lang = getenv( "LC_ALL" );
+-        if( psz_lang == NULL || psz_lang == '\0' )
++        if( psz_lang == NULL || psz_lang[0] == '\0' )
+         {
+             psz_lang = getenv( "LC_CTYPE" );
+             if( psz_lang == NULL || psz_lang[0] == '\0')
+--- a/vlc/src/video_output/vout_intf.c
++++ b/vlc/src/video_output/vout_intf.c
+@@ -40,8 +40,11 @@
+ 
+ #include <snapshot.h>
+ 
+-#define DIR_SEP "\\"
+-#define DIR_SEP "/"
++#if defined( WIN32 ) || defined( UNDER_CE )
++#   define DIR_SEP "\\"
++#else
++#   define DIR_SEP "/"
++#endif
+ 
+ /*****************************************************************************
+  * Local prototypes
+--- a/vlc/modules/demux/avi/avi.c
++++ b/vlc/modules/demux/avi/avi.c
+@@ -53,7 +53,7 @@
+ 
+ static int pi_index[] = {0,1,2};
+ 
+-static const char *ppsz_indexes[] = { N_("Ask"), N_("Always fix"),
++static char *ppsz_indexes[] = { N_("Ask"), N_("Always fix"),
+                                 N_("Never fix") };
+ 
+ vlc_module_begin();
