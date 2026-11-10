@@ -47,10 +47,28 @@ Copyright notices in the individual files remain in place.
   `close` are for sockets; the playlist demux module leaves out the formats that
   need an XML parser (B4S, podcast, XSPF, Shoutcast) and DVB channel lists, and
   the export module keeps only M3U.
-- `0003-upstream-fixes.patch`: bugs in 0.8.6i itself. `charset.c` compared a
-  pointer with `'\0'` instead of the character it points to; `vout_intf.c`
-  defined `DIR_SEP` twice where a platform `#if` was lost; `avi.c` passed a
-  `const` list where the configuration takes a mutable one.
+- `0003-upstream-fixes.patch`: bugs in 0.8.6i itself, regenerated as one diff per
+  file against the tarball (no other patch touches these files):
+  - `charset.c` compared a pointer with `'\0'` instead of the character it
+    points to; `vout_intf.c` defined `DIR_SEP` twice where a platform `#if` was
+    lost; `avi.c` passed a `const` list where the configuration takes a mutable
+    one.
+  - `playlist/item-ext.c`: the all-items view's root shares the `pp_items`
+    array, and deleting an item through the view moved it (`realloc`) without
+    updating `pp_items`, so clearing a playlist that had held an M3U's or PLS's
+    items read freed memory (found by ASan in the native test).
+    `playlist_Delete` takes the array back from the view, and
+    `playlist_ItemToNode` updates the view after removing from `pp_items`.
+  - `s16tofixed32.c` scaled 16-bit samples by `FIXED32_ONE >> 16`, half of full
+    scale, so every PCM and ADPCM sound played 6 dB quiet on the fixed-point
+    path; `>> 15` makes the round trip through `fixed32tos16` exact.
+  - `input/decoder.c`: an input ended once its decoders' queues were empty,
+    while the last of the audio still waited in the output for its date, and
+    ending deleted it: the end of every file was cut off. The decoder now
+    records when its last audio ends, and is not empty before then.
+  - `access/http.c`: the first read of an ICY stream did not stop at the first
+    metadata block, so when more than one block's worth had arrived (a fast
+    link) the metadata was played as sound and every later block misread.
 
 Everything else Glaze needs is outside the vendored tree, in `packages/vlc/glaze/`:
 `config.h` in place of autoconf's, the compat layer (`compat.h`, `printf.c`,
@@ -66,7 +84,14 @@ stb_image, since VLC 0.8 decoded MJPEG only through ffmpeg).
 Modules are linked in as builtins (`-D__BUILTIN__`), with no plugin loader and no
 FPU: audio takes 0.8's fixed-point path (libmad, fixed32, s16). libmad uses
 `FPM_64BIT` (the VR4131's 32x32->64 multiply); its `FPM_MIPS` assembly uses `hi`/`lo`
-constraints current GCC no longer accepts. `OPTIMIZE_MEMORY` is set, as the CE
+constraints current GCC no longer accepts. libmad's sources also get
+`SIZEOF_INT=4`, as the `mad.h` VLC includes has it; without it their
+`mad_fixed_t` is a `long`, which is 64 bits on a 64-bit host. `OPTIMIZE_MEMORY` is set, as the CE
 builds had it: otherwise every input allocates a 12 MiB stream cache. Flags are MIPS2/O32 soft-float PIC with
 `-fno-strict-aliasing -fwrapv`; a few upstream warning categories are turned off
 for vendor objects only.
+
+The source lists and shared flags are in `packages/vlc/sources.mk`, which the
+package's Makefile and the native test (`tests/Makefile`, `vlc-test`) both use.
+The test builds the same tree for Linux with pthreads in place of Glaze's
+threads (`tests/host/vlc/config.h`), with capture outputs, under ASan and UBSan.

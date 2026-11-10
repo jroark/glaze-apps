@@ -4,6 +4,8 @@
  * privileged-port helper. Each fails the way upstream does when the module
  * behind it is missing, so callers take their existing error paths.
  */
+#include <errno.h>
+
 #include <vlc/vlc.h>
 #include <vlc/sout.h>
 #include <vlc_osd.h>

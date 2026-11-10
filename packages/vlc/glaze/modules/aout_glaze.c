@@ -41,6 +41,12 @@
 
 /* 2048 frames is 8 KiB of stereo S16: one AUDIO_BUF_SIZE write. */
 #define FRAME_SIZE 2048
+/* The mixer hands over whole buffers only, so a stream's last partial one is
+ * never heard: buffers are about 100 ms, at most FRAME_SIZE (from 22.05 kHz
+ * up), rather than FRAME_SIZE at every rate, a quarter of a second at 8 kHz.
+ * Smaller ones cost more in writes than they save: at 22.05 kHz, 50 ms
+ * buffers gave three times the underruns under Motion-JPEG decoding. */
+#define BUFFER_FRAMES(rate) ((rate) / 10 >= FRAME_SIZE ? FRAME_SIZE : ((rate) / 10 + 63) & ~63u)
 /* Wait for VLC rather than play silence while the server holds this much. */
 #define LOW_WATER_US 100000
 /* Retry interval when the server's buffer is full. */
@@ -129,7 +135,7 @@ static int Open(vlc_object_t *p_this)
     }
 
     p_aout->output.p_sys = p_sys;
-    p_aout->output.i_nb_samples = FRAME_SIZE;
+    p_aout->output.i_nb_samples = BUFFER_FRAMES(fmt->i_rate);
     p_aout->output.pf_play = Play;
     /* Keeps i_volume (from the saved "volume" setting); applied below. */
     aout_VolumeSoftInit(p_aout);

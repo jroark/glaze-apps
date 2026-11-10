@@ -36,3 +36,118 @@
                                  N_("Never fix") };
  
  vlc_module_begin();
+--- a/vlc/src/playlist/item-ext.c
++++ b/vlc/src/playlist/item-ext.c
+@@ -551,6 +551,8 @@
+             REMOVE_ELEM( p_playlist->pp_items, p_playlist->i_size, i );
+         }
+     }
++    /* The VIEW_ALL root shares pp_items, which may have moved. */
++    playlist_ViewUpdate( p_playlist, VIEW_ALL );
+     var_SetInteger( p_playlist, "item-change", p_item->input.i_id );
+ 
+     return VLC_SUCCESS;
+@@ -637,6 +639,7 @@
+     int i, i_top, i_bottom;
+     int i_pos;
+     vlc_bool_t b_flag = VLC_FALSE;
++    playlist_view_t *p_view;
+ 
+     playlist_item_t *p_item = playlist_ItemGetById( p_playlist, i_id );
+ 
+@@ -703,6 +706,11 @@
+             p_playlist->i_size--;
+         }
+     }
++    /* The VIEW_ALL root's children are pp_items (playlist_ViewUpdate), and
++     * removing the item from them may have moved the array. */
++    p_view = playlist_ViewFind( p_playlist, VIEW_ALL );
++    if( p_view )
++        p_playlist->pp_items = p_view->p_root->pp_children;
+ 
+     /* TODO : Update views */
+ 
+--- a/vlc/src/input/decoder.c
++++ b/vlc/src/input/decoder.c
+@@ -61,6 +61,8 @@
+     vlc_bool_t      b_own_thread;
+ 
+     int64_t         i_preroll_end;
++    /* When the last audio handed to the output ends (system time) */
++    mtime_t         i_audio_end;
+ 
+     input_thread_t  *p_input;
+ 
+@@ -271,10 +273,18 @@
+ 
+ vlc_bool_t input_DecoderEmpty( decoder_t * p_dec )
+ {
++    mtime_t i_end = p_dec->p_owner->i_audio_end, i_now = mdate();
++
+     if( p_dec->p_owner->b_own_thread && p_dec->p_owner->p_fifo->i_depth > 0 )
+     {
+         return VLC_FALSE;
+     }
++    /* Audio waits in the output until its date: the input must not end,
++     * deleting the output's input with it, before the last is played. */
++    if( i_end > i_now && i_end < i_now + 5 * I64C(1000000) )
++    {
++        return VLC_FALSE;
++    }
+     return VLC_TRUE;
+ }
+ 
+@@ -400,6 +410,7 @@
+     }
+     p_dec->p_owner->b_own_thread = VLC_TRUE;
+     p_dec->p_owner->i_preroll_end = -1;
++    p_dec->p_owner->i_audio_end = 0;
+     p_dec->p_owner->p_input = p_input;
+     p_dec->p_owner->p_aout = NULL;
+     p_dec->p_owner->p_aout_input = NULL;
+@@ -637,6 +648,7 @@
+                         else
+                         {
+                             p_dec->p_owner->i_preroll_end = -1;
++                            p_dec->p_owner->i_audio_end = p_aout_buf->end_date;
+                             aout_DecPlay( p_dec->p_owner->p_aout,
+                                           p_dec->p_owner->p_aout_input,
+                                           p_aout_buf );
+@@ -659,6 +671,7 @@
+             else
+             {
+                 p_dec->p_owner->i_preroll_end = -1;
++                p_dec->p_owner->i_audio_end = p_aout_buf->end_date;
+                 aout_DecPlay( p_dec->p_owner->p_aout,
+                               p_dec->p_owner->p_aout_input,
+                               p_aout_buf );
+--- a/vlc/modules/access/http.c
++++ b/vlc/modules/access/http.c
+@@ -531,12 +531,14 @@
+         i_len = i_new_len;
+     }
+ 
+-    if( p_sys->i_icy_meta > 0 && p_access->info.i_pos > 0 )
++    if( p_sys->i_icy_meta > 0 )
+     {
+         int64_t i_next = p_sys->i_icy_meta -
+                                     p_access->info.i_pos % p_sys->i_icy_meta;
+ 
+-        if( i_next == p_sys->i_icy_meta )
++        /* No metadata before the first block, but the first read must
++         * stop at its end too. */
++        if( i_next == p_sys->i_icy_meta && p_access->info.i_pos > 0 )
+         {
+             if( ReadICYMeta( p_access ) )
+             {
+--- a/vlc/modules/audio_filter/converter/s16tofixed32.c
++++ b/vlc/modules/audio_filter/converter/s16tofixed32.c
+@@ -91,7 +91,7 @@
+ 
+     while( i-- )
+     {
+-        *p_out = (vlc_fixed_t)( (int32_t)(*p_in) * (FIXED32_ONE >> 16) );
++        *p_out = (vlc_fixed_t)( (int32_t)(*p_in) * (FIXED32_ONE >> 15) );
+         p_in--; p_out--;
+     }
+ 

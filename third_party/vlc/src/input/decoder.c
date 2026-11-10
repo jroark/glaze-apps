@@ -61,6 +61,8 @@ struct decoder_owner_sys_t
     vlc_bool_t      b_own_thread;
 
     int64_t         i_preroll_end;
+    /* When the last audio handed to the output ends (system time) */
+    mtime_t         i_audio_end;
 
     input_thread_t  *p_input;
 
@@ -271,7 +273,15 @@ void input_DecoderDiscontinuity( decoder_t * p_dec )
 
 vlc_bool_t input_DecoderEmpty( decoder_t * p_dec )
 {
+    mtime_t i_end = p_dec->p_owner->i_audio_end, i_now = mdate();
+
     if( p_dec->p_owner->b_own_thread && p_dec->p_owner->p_fifo->i_depth > 0 )
+    {
+        return VLC_FALSE;
+    }
+    /* Audio waits in the output until its date: the input must not end,
+     * deleting the output's input with it, before the last is played. */
+    if( i_end > i_now && i_end < i_now + 5 * I64C(1000000) )
     {
         return VLC_FALSE;
     }
@@ -400,6 +410,7 @@ static decoder_t * CreateDecoder( input_thread_t *p_input,
     }
     p_dec->p_owner->b_own_thread = VLC_TRUE;
     p_dec->p_owner->i_preroll_end = -1;
+    p_dec->p_owner->i_audio_end = 0;
     p_dec->p_owner->p_input = p_input;
     p_dec->p_owner->p_aout = NULL;
     p_dec->p_owner->p_aout_input = NULL;
@@ -637,6 +648,7 @@ static int DecoderDecode( decoder_t *p_dec, block_t *p_block )
                         else
                         {
                             p_dec->p_owner->i_preroll_end = -1;
+                            p_dec->p_owner->i_audio_end = p_aout_buf->end_date;
                             aout_DecPlay( p_dec->p_owner->p_aout,
                                           p_dec->p_owner->p_aout_input,
                                           p_aout_buf );
@@ -659,6 +671,7 @@ static int DecoderDecode( decoder_t *p_dec, block_t *p_block )
             else
             {
                 p_dec->p_owner->i_preroll_end = -1;
+                p_dec->p_owner->i_audio_end = p_aout_buf->end_date;
                 aout_DecPlay( p_dec->p_owner->p_aout,
                               p_dec->p_owner->p_aout_input,
                               p_aout_buf );

@@ -531,12 +531,14 @@ static int Read( access_t *p_access, uint8_t *p_buffer, int i_len )
         i_len = i_new_len;
     }
 
-    if( p_sys->i_icy_meta > 0 && p_access->info.i_pos > 0 )
+    if( p_sys->i_icy_meta > 0 )
     {
         int64_t i_next = p_sys->i_icy_meta -
                                     p_access->info.i_pos % p_sys->i_icy_meta;
 
-        if( i_next == p_sys->i_icy_meta )
+        /* No metadata before the first block, but the first read must
+         * stop at its end too. */
+        if( i_next == p_sys->i_icy_meta && p_access->info.i_pos > 0 )
         {
             if( ReadICYMeta( p_access ) )
             {

@@ -22,5 +22,8 @@ repo), built against its application SDK. See README.md for the app list and com
   binary runs a local mock server with `--serve <imap_port> <smtp_port>` and checks a
   real one with `--live`. **Doom** packs no WAD and fetches none; engine pins and
   patches are in `third_party/doomgeneric/UPSTREAM.md`. **Chat** signs in with
-  `tools/chatgpt_signin.py`; see `docs/CHATGPT.md`.
+  `tools/chatgpt_signin.py`; see `docs/CHATGPT.md`. **VLC** 0.8.6i is vendored with
+  libmad and libmpeg2: pins and patches in `third_party/vlc/UPSTREAM.md` (edit the
+  tree, then regenerate the patch; `tools/vlc_vendor.sh` must reproduce it); its
+  native test (`vlc-test`) builds for Linux, in Docker elsewhere. See `docs/VLC.md`.
 - **Never commit** credentials or `CODEX.AUTH` exports, App Passwords, or WADs.

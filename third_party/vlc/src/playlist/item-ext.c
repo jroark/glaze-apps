@@ -551,6 +551,8 @@ int playlist_ItemToNode( playlist_t *p_playlist,playlist_item_t *p_item )
             REMOVE_ELEM( p_playlist->pp_items, p_playlist->i_size, i );
         }
     }
+    /* The VIEW_ALL root shares pp_items, which may have moved. */
+    playlist_ViewUpdate( p_playlist, VIEW_ALL );
     var_SetInteger( p_playlist, "item-change", p_item->input.i_id );
 
     return VLC_SUCCESS;
@@ -637,6 +639,7 @@ int playlist_Delete( playlist_t * p_playlist, int i_id )
     int i, i_top, i_bottom;
     int i_pos;
     vlc_bool_t b_flag = VLC_FALSE;
+    playlist_view_t *p_view;
 
     playlist_item_t *p_item = playlist_ItemGetById( p_playlist, i_id );
 
@@ -703,6 +706,11 @@ int playlist_Delete( playlist_t * p_playlist, int i_id )
             p_playlist->i_size--;
         }
     }
+    /* The VIEW_ALL root's children are pp_items (playlist_ViewUpdate), and
+     * removing the item from them may have moved the array. */
+    p_view = playlist_ViewFind( p_playlist, VIEW_ALL );
+    if( p_view )
+        p_playlist->pp_items = p_view->p_root->pp_children;
 
     /* TODO : Update views */
 

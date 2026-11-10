@@ -91,7 +91,7 @@ static void DoWork( aout_instance_t * p_aout, aout_filter_t * p_filter,
 
     while( i-- )
     {
-        *p_out = (vlc_fixed_t)( (int32_t)(*p_in) * (FIXED32_ONE >> 16) );
+        *p_out = (vlc_fixed_t)( (int32_t)(*p_in) * (FIXED32_ONE >> 15) );
         p_in--; p_out--;
     }
 
